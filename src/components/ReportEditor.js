@@ -66,22 +66,52 @@ export function renderReportEditor(container, study, allStudies = [], callbacks 
         <!-- Main Editor Body -->
         <div style="flex: 1; display: flex; flex-direction: column; padding: 1.25rem; gap: 1rem; overflow-y: auto;">
           
-          <!-- Template Selector Bar & Search Library Button -->
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: rgba(15, 23, 42, 0.5); padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid var(--border-light); flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;" id="templateChips">
-              <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Máscaras Rápidas:</span>
+          <!-- Complete Pre-Laudo Search & Selection Control Bar -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-light); border-radius: 8px; padding: 0.75rem 1rem; display: flex; flex-direction: column; gap: 0.6rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+              <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary-cyan); display: flex; align-items: center; gap: 0.4rem;">
+                <i data-lucide="file-text" style="width: 16px; height: 16px;"></i>
+                📚 BANCO DE PRÉ-LAUDOS PADRONIZADOS (${Object.keys(templates).length} MODELOS)
+              </span>
 
-              ${Object.entries(templates).slice(0, 4).map(([key, t]) => `
-                <button class="btn-chip ${key === activeTemplateKey ? 'active' : ''}" data-key="${key}" style="font-size: 0.72rem; padding: 4px 10px; border-radius: 6px; border: 1px solid ${key === activeTemplateKey ? 'var(--primary-cyan)' : 'transparent'}; background: ${key === activeTemplateKey ? 'var(--primary-cyan-soft)' : 'transparent'}; color: ${key === activeTemplateKey ? 'var(--primary-cyan)' : 'var(--text-muted)'}; cursor: pointer; font-weight: 600;">
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="btn-secondary" id="btnSaveCustomPreLaudo" style="font-size: 0.72rem; padding: 0.3rem 0.65rem; border-color: var(--status-ready); color: var(--status-ready); font-weight: 700;">
+                  <i data-lucide="save" style="width: 13px; height: 13px;"></i>
+                  <span>+ Salvar Texto Atual como Pré-Laudo</span>
+                </button>
+
+                <button class="btn-secondary" id="btnOpenTemplateLibrary" style="font-size: 0.72rem; padding: 0.3rem 0.65rem; border-color: var(--primary-cyan); color: var(--primary-cyan); font-weight: 700;">
+                  <i data-lucide="search" style="width: 13px; height: 13px;"></i>
+                  <span>📚 Biblioteca Completa</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Instant Search Input & Dropdown Selector -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.5rem;">
+              <div style="position: relative;">
+                <i data-lucide="search" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--text-muted);"></i>
+                <input type="text" id="tplSearchInput" class="form-select" style="padding-left: 2.3rem; width: 100%; font-size: 0.8rem; background: #05080E; color: #FFF;" placeholder="🔍 Digite para pesquisar pré-laudos (ex: esteatose, transvaginal, mioma, carótida, mamas, cisto)...">
+              </div>
+
+              <select id="tplQuickSelect" class="form-select" style="font-size: 0.8rem; font-weight: 600; background: #0F172A; color: #FFF;">
+                <option value="">-- Selecionar Máscara de Pré-Laudo --</option>
+                ${Object.entries(templates).map(([key, t]) => `
+                  <option value="${key}" ${key === activeTemplateKey ? 'selected' : ''}>
+                    [${t.category || t.modality}] ${t.name}
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <!-- Filtered Quick Chips Bar -->
+            <div style="display: flex; align-items: center; gap: 0.4rem; overflow-x: auto; padding-top: 0.2rem;" id="templateChips">
+              ${Object.entries(templates).slice(0, 6).map(([key, t]) => `
+                <button class="btn-chip ${key === activeTemplateKey ? 'active' : ''}" data-key="${key}" style="font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; border: 1px solid ${key === activeTemplateKey ? 'var(--primary-cyan)' : 'var(--border-light)'}; background: ${key === activeTemplateKey ? 'var(--primary-cyan-soft)' : '#0F172A'}; color: ${key === activeTemplateKey ? 'var(--primary-cyan)' : 'var(--text-muted)'}; cursor: pointer; font-weight: 600; white-space: nowrap;">
                   ${t.name}
                 </button>
               `).join('')}
             </div>
-
-            <button class="btn-secondary" id="btnOpenTemplateLibrary" style="font-size: 0.75rem; padding: 0.35rem 0.75rem; border-color: var(--primary-cyan); color: var(--primary-cyan); font-weight: 700;">
-              <i data-lucide="search" style="width: 14px; height: 14px;"></i>
-              <span>📚 Pesquisar Todas as Máscaras (${Object.keys(templates).length})</span>
-            </button>
           </div>
 
           <!-- Action Buttons Bar (Gemini AI) -->
@@ -170,6 +200,57 @@ export function renderReportEditor(container, study, allStudies = [], callbacks 
 
     container.querySelector('#btnNavSplit')?.addEventListener('click', () => {
       if (callbacks.onToggleViewMode) callbacks.onToggleViewMode('split');
+    });
+
+    // Instant Search Input & Dropdown Selector Handlers
+    const tplSearchInput = container.querySelector('#tplSearchInput');
+    const tplQuickSelect = container.querySelector('#tplQuickSelect');
+
+    tplSearchInput?.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase().trim();
+      if (!tplQuickSelect) return;
+
+      Array.from(tplQuickSelect.options).forEach((opt, idx) => {
+        if (idx === 0) return;
+        const text = opt.textContent.toLowerCase();
+        opt.style.display = !term || text.includes(term) ? '' : 'none';
+      });
+    });
+
+    tplQuickSelect?.addEventListener('change', (e) => {
+      const key = e.target.value;
+      if (!key) return;
+      activeTemplateKey = key;
+      const selectedTpl = templates[activeTemplateKey];
+      if (selectedTpl) {
+        reportTextarea.value = selectedTpl.findings ? `${selectedTpl.findings}\n\nIMPRESSÃO DIAGNÓSTICA:\n${selectedTpl.impression}` : '';
+        showToast(`📋 Pré-laudo "${selectedTpl.name}" inserido no editor!`, "info");
+      }
+    });
+
+    // Save Custom Pre-Laudo Button
+    container.querySelector('#btnSaveCustomPreLaudo')?.addEventListener('click', () => {
+      const text = reportTextarea.value.trim();
+      if (!text) {
+        showToast("Por favor, digite o texto do pré-laudo antes de salvar.", "warning");
+        return;
+      }
+
+      const title = prompt("Digite o título do novo Pré-Laudo padronizado:", `Ultrassom de ${currentStudy.studyDescription}`);
+      if (!title) return;
+
+      const key = `CUSTOM_US_${Date.now()}`;
+      const newTpl = {
+        name: title.toUpperCase(),
+        modality: currentStudy.modality || "US",
+        category: "Personalizados Clínica",
+        findings: text,
+        impression: "Conclusão personalizada salva."
+      };
+
+      MOCK_TEMPLATES[key] = newTpl;
+      showToast(`✅ Novo Pré-Laudo "${title}" salvo com sucesso na biblioteca!`, "success");
+      render();
     });
 
     // Open Template Library Search Modal

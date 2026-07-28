@@ -278,5 +278,98 @@ ACHADOS:
 - RETINÁCULOS PATELARES: Integridade mantida.
 - FOSSA POPLÍTEA: Ausência de Cisto de Baker ou formações císticas expansivas.`,
     impression: "Ultrassonografia articular do joelho dentro dos limites da normalidade."
+  },
+
+  // PRÉ-LAUDOS COM PATOLOGIAS FREQUENTES
+  "US_ABDOMEN_ESTEATOSE": {
+    name: "Ultrassom de Abdômen com Esteatose Hepática Moderada",
+    modality: "US",
+    category: "Abdômen e Pelve",
+    findings: `TÉCNICA:
+Exame realizado com transdutor convexo multifrequencial de 3.5 MHz.
+
+ACHADOS:
+- FÍGADO: Aumentado de volume, com contornos regulares. Observa-se aumento difuso da ecogenacidade do parênquima hepático, com atenuação acústica posterior moderada e atenuação do sinal ecográfico dos vasos hepáticos profundos. Ausência de lesões expansivas focais.
+- VESÍCULA BILIAR: Anacóica, paredes finas, sem cálculos.
+- PANCREAS E BAÇO: Ecotextura preservada.
+- RINS: Dimensões normais, sem cálculos ou hidronefrose.`,
+    impression: "Sinais ecográficos de Esteatose Hepática Moderada (Grau II)."
+  },
+  "US_COLELITIASE": {
+    name: "Ultrassom com Colelitíase (Pedras na Vesícula)",
+    modality: "US",
+    category: "Abdômen e Pelve",
+    findings: `TÉCNICA:
+Exame realizado com paciente em decúbito dorsal e decúbito lateral esquerdo.
+
+ACHADOS:
+- VESÍCULA BILIAR: Normotrófica, paredes finas, apresentando em seu interior múltiplas imagens ecogênicas com sombra acústica posterior nítida, móveis à mudança de decúbito, a maior medindo cerca de 1,2 cm.
+- VIAS BILIARES: Vias biliares intra e extra-hepáticas de calibre preservado.
+- FÍGADO E PANCREAS: Aspecto ultrassonográfico mantido.`,
+    impression: "Colelitíase (cálculos na vesícula biliar) sem sinais ecográficos de colecistite aguda no momento."
+  },
+  "US_TRANSVAGINAL_MIOMA": {
+    name: "Ultrassom Transvaginal com Mioma Uterino",
+    modality: "US",
+    category: "Ginecologia e Obstetrícia",
+    findings: `TÉCNICA:
+Exame realizado por via endocavitária transvaginal.
+
+ACHADOS:
+- ÚTERO: Aumentado de volume, de contornos lobulados. Medidas: 9,2 x 5,8 x 5,1 cm (Volume: 142,0 cm³).
+- MIOMÉTRIO: Heterogêneo à custa de imagem nodular hipoecóica, bem delimitada, localizada na parede posterior do corpo uterino (intramural), medindo 3,4 x 3,1 cm.
+- ENDOMÉTRIO: Centrado, medindo 6,0 mm.
+- OVÁRIOS: Tópicos, de morfologia ecográfica normal.`,
+    impression: "Nódulo miomatoso uterino intramural (Miomatose Uterina)."
+  },
+  "US_TRANSVAGINAL_CISTO": {
+    name: "Ultrassom Transvaginal com Cisto Ovariano Simples",
+    modality: "US",
+    category: "Ginecologia e Obstetrícia",
+    findings: `TÉCNICA:
+Exame por via endocavitária transvaginal com Doppler.
+
+ACHADOS:
+- OVÁRIO DIREITO: Apresenta imagem cística anecóica de paredes finas e lisas, com reforço acústico posterior, sem septos ou vegetações internas, medindo 3,8 x 3,2 cm. Ausência de vascularização ao Doppler colorido.
+- OVÁRIO ESQUERDO: Dimensões normais (Volume: 5,2 cm³).
+- ÚTERO E ENDOMÉTRIO: Preservados.`,
+    impression: "Cisto ovariano simples no ovário direito (provável cisto funcional/folicular)."
+  },
+  "US_TIREOIDE_NODULO": {
+    name: "Ultrassom de Tireoide com Nódulo TI-RADS 3",
+    modality: "US",
+    category: "Pequenas Partes",
+    findings: `TÉCNICA:
+Estudo da tireoide com Doppler de alta frequência.
+
+ACHADOS:
+- LOBO DIREITO: Observa-se imagem nodular isoecóica, ovalada, de contornos bem definidos, sem microcalcificações, medindo 1,4 x 1,1 cm no terço médio. Ao Doppler, apresenta vascularização predominantemente periférica.
+- LOBO ESQUERDO E ÍSTIMO: Ecotextura preservada.`,
+    impression: "Nódulo tireoidiano no lobo direito. Classificação ACR TI-RADS 3 (Baixo risco de malignidade)."
+  },
+  "US_PROSTATA_HPB": {
+    name: "Ultrassom de Próstata Abdominal (Hiperplasia Prostática - HPB)",
+    modality: "US",
+    category: "Abdômen e Pelve",
+    findings: `TÉCNICA:
+Exame realizado por via suprapúbica com bexiga repleta.
+
+ACHADOS:
+- PRÓSTATA: Aumentada de volume, de contornos precisos e textura parenquimatosa heterogênea. Medidas: 5,2 x 4,8 x 4,5 cm (Volume estimado: 58,5 cm³ - Peso normal até 30g). Projeção do lobo mediano sobre a base vesical.
+- BEXIGA: Paredes espessadas com trabeculações de esforço.
+- RESÍDUO PÓS-MICCIONAL: Medido em 65 mL (Moderado).`,
+    impression: "Sinais ecográficos de Hiperplasia Prostática Benigna (HPB) com repercussão vesical moderada."
+  },
+  "US_RINS_NEFROLITIASE": {
+    name: "Ultrassom de Rins com Nefrolitíase (Cálculo Renal)",
+    modality: "US",
+    category: "Abdômen e Pelve",
+    findings: `TÉCNICA:
+Exame renal bilateral transabdominal.
+
+ACHADOS:
+- RIM DIREITO: Dimensões preservadas. Observa-se imagem hiperrecogênica com sombra acústica posterior no grupo calicial médio, medindo 6,5 mm. Ausência de ectasia pielocalicial.
+- RIM ESQUERDO: Aspecto ultrassonográfico normal.`,
+    impression: "Nefrolitíase à direita (cálculo renal não obstrutivo no grupo calicial médio)."
   }
 };
