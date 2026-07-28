@@ -3,7 +3,7 @@
 // Supports Multiple File Selection, Patient Name Association & Single-Study Grouping
 // ==========================================================================
 
-import { parseDicomFile, renderRawDicomToCanvas } from '../utils/dicomParser.js';
+import { parseDicomFile, renderRawDicomToCanvas, extractEmbeddedDicomImage } from '../utils/dicomParser.js';
 import { createIcons } from 'lucide';
 import * as LucideIcons from 'lucide';
 
@@ -313,13 +313,25 @@ export function renderUploadModal(container, callbacks) {
 
 async function processDicomOrImageFile(file) {
   const fileName = file.name.toLowerCase();
-  const isDicom = fileName.endsWith('.dcm') || fileName.endsWith('.dicom');
+  const isDicom = fileName.endsWith('.dcm') || fileName.endsWith('.dicom') || file.type.includes('dicom');
 
   if (isDicom) {
     try {
       const buffer = await file.arrayBuffer();
+      const byteArray = new Uint8Array(buffer);
       const parsed = parseDicomFile(buffer);
 
+      // 1. Extract embedded JPEG / PNG stream if DICOM uses encapsulated transfer syntax
+      const embeddedBlob = extractEmbeddedDicomImage(byteArray);
+      if (embeddedBlob) {
+        const dataUrl = await blobToDataUrl(embeddedBlob);
+        return {
+          dataUrl: dataUrl,
+          parsedDicom: parsed
+        };
+      }
+
+      // 2. Render raw uncompressed 16-bit / 8-bit DICOM pixels if available
       if (parsed && parsed.pixelData) {
         const offCanvas = document.createElement('canvas');
         if (renderRawDicomToCanvas(offCanvas, parsed)) {
@@ -330,7 +342,7 @@ async function processDicomOrImageFile(file) {
         }
       }
     } catch (err) {
-      console.warn("Could not convert raw DICOM to PNG, falling back to dataUrl:", file.name, err);
+      console.warn("Could not parse DICOM stream directly, fallback to file reader:", file.name, err);
     }
   }
 
@@ -339,6 +351,14 @@ async function processDicomOrImageFile(file) {
     dataUrl: dataUrl,
     parsedDicom: null
   };
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.readAsDataURL(blob);
+  });
 }
 
 function readFileAsDataUrl(file) {

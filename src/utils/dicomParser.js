@@ -1,9 +1,42 @@
 // ==========================================================================
 // NexusRad AI - Native Binary DICOM (.dcm) Parser & Pixel Renderer
-// Correct 8-bit / 16-bit Endian DataView Pixel Extraction & Canvas Scaling
+// Supports Encapsulated JPEG/PNG Embedded Stream Extraction & Dynamic Normalization
 // ==========================================================================
 
 import dicomParser from 'dicom-parser';
+
+/**
+ * Extract embedded JPEG (0xFF 0xD8 0xFF) or PNG (0x89 0x50 0x4E 0x47) from DICOM byte stream
+ */
+export function extractEmbeddedDicomImage(byteArray) {
+  if (!byteArray || byteArray.length < 10) return null;
+
+  // Search for JPEG Start of Image (SOI) marker: 0xFF 0xD8 0xFF
+  for (let i = 0; i < byteArray.length - 4; i++) {
+    if (byteArray[i] === 0xFF && byteArray[i + 1] === 0xD8 && byteArray[i + 2] === 0xFF) {
+      let endIdx = byteArray.length;
+      for (let j = i + 3; j < byteArray.length - 1; j++) {
+        if (byteArray[j] === 0xFF && byteArray[j + 1] === 0xD9) {
+          endIdx = j + 2;
+          break;
+        }
+      }
+
+      const jpegBytes = byteArray.subarray(i, endIdx);
+      return new Blob([jpegBytes], { type: 'image/jpeg' });
+    }
+  }
+
+  // Search for PNG marker: 0x89 0x50 0x4E 0x47
+  for (let i = 0; i < byteArray.length - 8; i++) {
+    if (byteArray[i] === 0x89 && byteArray[i + 1] === 0x50 && byteArray[i + 2] === 0x4E && byteArray[i + 3] === 0x47) {
+      const pngBytes = byteArray.subarray(i);
+      return new Blob([pngBytes], { type: 'image/png' });
+    }
+  }
+
+  return null;
+}
 
 /**
  * Parse an ArrayBuffer containing a raw .dcm DICOM file
@@ -80,13 +113,13 @@ export function parseDicomFile(arrayBuffer) {
 }
 
 /**
- * Render raw 16-bit DICOM pixel array to HTML5 Canvas
+ * Render raw 16-bit DICOM pixel array to HTML5 Canvas with Dynamic Normalization
  */
 export function renderRawDicomToCanvas(canvas, dicomObject, options = {}) {
   if (!canvas || !dicomObject || !dicomObject.pixelData) return false;
 
   const ctx = canvas.getContext('2d');
-  const { rows, cols, pixelData, windowWidth, windowCenter, rescaleSlope, rescaleIntercept } = dicomObject;
+  const { rows, cols, pixelData } = dicomObject;
 
   canvas.width = cols;
   canvas.height = rows;
@@ -94,27 +127,24 @@ export function renderRawDicomToCanvas(canvas, dicomObject, options = {}) {
   const imgData = ctx.createImageData(cols, rows);
   const data = imgData.data;
 
-  const ww = options.windowWidth || windowWidth || 400;
-  const wl = options.windowLevel || windowCenter || 40;
-
-  const lowerBound = wl - ww / 2;
-  const upperBound = wl + ww / 2;
-
   const totalPixels = rows * cols;
   if (pixelData.length < totalPixels) return false;
 
+  // Calculate Dynamic Min / Max for optimal contrast
+  let minVal = Infinity;
+  let maxVal = -Infinity;
+  for (let i = 0; i < totalPixels; i++) {
+    const val = pixelData[i];
+    if (val < minVal) minVal = val;
+    if (val > maxVal) maxVal = val;
+  }
+
+  if (maxVal === minVal) maxVal = minVal + 1;
+  const range = maxVal - minVal;
+
   for (let i = 0; i < totalPixels; i++) {
     const rawVal = pixelData[i];
-    const huVal = rawVal * rescaleSlope + rescaleIntercept;
-
-    let intensity = 0;
-    if (huVal <= lowerBound) {
-      intensity = 0;
-    } else if (huVal >= upperBound) {
-      intensity = 255;
-    } else {
-      intensity = Math.round(((huVal - lowerBound) / ww) * 255);
-    }
+    let intensity = Math.round(((rawVal - minVal) / range) * 255);
 
     if (options.inverted) {
       intensity = 255 - intensity;
