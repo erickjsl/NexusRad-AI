@@ -1,5 +1,6 @@
 // ==========================================================================
 // NexusRad AI - Streamlined Minimalist Report Editor with Template Library
+// WhatsApp Patient Notification & ICP-Brasil Digital Signatures
 // ==========================================================================
 
 import { MOCK_TEMPLATES } from '../data/mockData.js';
@@ -61,7 +62,7 @@ export function renderReportEditor(container, study, allStudies = [], callbacks 
             <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;" id="templateChips">
               <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Máscaras Rápidas:</span>
 
-              ${Object.entries(templates).slice(0, 4).map(([key, t] ) => `
+              ${Object.entries(templates).slice(0, 4).map(([key, t]) => `
                 <button class="btn-chip ${key === activeTemplateKey ? 'active' : ''}" data-key="${key}" style="font-size: 0.72rem; padding: 4px 10px; border-radius: 6px; border: 1px solid ${key === activeTemplateKey ? 'var(--primary-cyan)' : 'transparent'}; background: ${key === activeTemplateKey ? 'var(--primary-cyan-soft)' : 'transparent'}; color: ${key === activeTemplateKey ? 'var(--primary-cyan)' : 'var(--text-muted)'}; cursor: pointer; font-weight: 600;">
                   ${t.name}
                 </button>
@@ -74,7 +75,7 @@ export function renderReportEditor(container, study, allStudies = [], callbacks 
             </button>
           </div>
 
-          <!-- Action Buttons Bar (Gemini AI & Voice) -->
+          <!-- Action Buttons Bar (Gemini AI) -->
           <div style="display: flex; gap: 0.75rem;">
             <button class="btn-primary" id="btnGeminiAiReport" style="flex: 1; justify-content: center; background: linear-gradient(135deg, #00E5FF 0%, #3B82F6 100%); border: none; font-weight: 700; padding: 0.6rem;">
               <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i>
@@ -91,12 +92,12 @@ export function renderReportEditor(container, study, allStudies = [], callbacks 
           <div style="display: flex; gap: 0.75rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
             <button class="btn-secondary" id="btnPrintReport" style="flex: 1; justify-content: center; padding: 0.65rem;">
               <i data-lucide="printer" style="width: 16px; height: 16px;"></i>
-              <span>Imprimir</span>
+              <span>Imprimir PDF</span>
             </button>
 
             <button class="btn-primary" id="btnSignReport" style="flex: 1.5; justify-content: center; background: var(--status-ready); border-color: var(--status-ready); font-weight: 700; padding: 0.65rem;">
               <i data-lucide="shield-check" style="width: 18px; height: 18px;"></i>
-              <span>Assinar Laudo Digitalmente (ICP-Brasil)</span>
+              <span>Assinar Digitalmente & Enviar WhatsApp ao Paciente</span>
             </button>
           </div>
 
@@ -157,12 +158,18 @@ export function renderReportEditor(container, study, allStudies = [], callbacks 
       btn.querySelector('span').textContent = '✨ Gerar Laudo Automático (Gemini IA)';
     });
 
-    // Sign & Save PDF
+    // Sign, Save PDF & Send Automatic WhatsApp Notification
     container.querySelector('#btnSignReport')?.addEventListener('click', () => {
       currentStudy.status = 'concluido';
       currentStudy.reportText = reportTextarea.value;
       generatePdf(currentStudy, reportTextarea.value);
-      alert(`✅ Laudo do paciente ${currentStudy.patientName} assinado digitalmente com Certificado ICP-Brasil! PDF gerado com sucesso.`);
+
+      const msg = encodeURIComponent(`Olá ${currentStudy.patientName}, seu laudo do exame de ${currentStudy.studyDescription} foi assinado pelo Dr. Radiologista e já está disponível para consulta e download em nosso portal online:\n\nhttp://127.0.0.1:3000/#/portal/${currentStudy.id}`);
+
+      if (confirm(`✅ Laudo do paciente ${currentStudy.patientName} assinado digitalmente com Certificado ICP-Brasil!\n\nDeseja disparar a notificação automática via WhatsApp para o paciente agora?`)) {
+        window.open(`https://wa.me/5511998887766?text=${msg}`, '_blank');
+      }
+
       if (callbacks.onReportSigned) callbacks.onReportSigned(currentStudy.id);
     });
 

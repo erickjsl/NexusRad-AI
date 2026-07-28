@@ -1,16 +1,12 @@
 // ==========================================================================
-// NexusRad AI - Header Navigation Component with Auth User Info
+// NexusRad AI - Header Navigation Component with Auth User Info & RBAC Role Switcher
 // ==========================================================================
 
 import { renderNewExamWizardModal } from './NewExamWizardModal.js';
+import { DEMO_USERS } from './LoginModal.js';
 
 export function renderHeader(container, state, callbacks) {
-  const user = state.currentUser || {
-    name: "Dr. Carlos Roberto",
-    role: "Médico Radiologista",
-    avatar: "👨‍⚕️",
-    badge: "LAUDADOR"
-  };
+  const user = state.currentUser || DEMO_USERS[0];
 
   container.innerHTML = `
     <header class="app-header">
@@ -53,14 +49,17 @@ export function renderHeader(container, state, callbacks) {
           <span>Importar .dcm</span>
         </button>
 
-        <!-- Logged User Info & Logout Button -->
-        <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-card-hover); padding: 0.35rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
-          <span style="font-size: 1.1rem;">${user.avatar}</span>
-          <div style="display: flex; flex-direction: column; line-height: 1.2;">
-            <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-main);">${user.name.split(' ')[0]} ${user.name.split(' ')[1] || ''}</span>
-            <span style="font-size: 0.65rem; color: var(--primary-cyan); font-family: monospace;">${user.badge}</span>
-          </div>
-          <button id="btnLogout" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 2px; margin-left: 4px;" title="Sair / Encerrar Sessão">
+        <!-- Logged User Profile Switcher (RBAC) -->
+        <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-card-hover); padding: 0.25rem 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+          <select id="userRoleSelect" class="form-select" style="font-size: 0.75rem; font-weight: 700; background: transparent; border: none; color: #FFF; cursor: pointer;">
+            ${DEMO_USERS.map(u => `
+              <option value="${u.username}" ${u.username === user.username ? 'selected' : ''}>
+                ${u.avatar} ${u.name.split(' ')[0]} (${u.badge})
+              </option>
+            `).join('')}
+          </select>
+
+          <button id="btnLogout" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 2px;" title="Sair / Encerrar Sessão">
             <i data-lucide="log-out" style="width: 16px; height: 16px;"></i>
           </button>
         </div>
@@ -87,7 +86,7 @@ export function renderHeader(container, state, callbacks) {
     wizardBtn.addEventListener('click', () => {
       renderNewExamWizardModal(document.querySelector('#modalContainer'), state, {
         onWizardComplete: (newStudy) => {
-          if (callbacks.onGoHome) callbacks.onGoHome();
+          if (callbacks.onWizardComplete) callbacks.onWizardComplete(newStudy);
         }
       });
     });
@@ -101,6 +100,16 @@ export function renderHeader(container, state, callbacks) {
   const brandBtn = container.querySelector('#brandBtn');
   if (brandBtn) {
     brandBtn.addEventListener('click', callbacks.onGoHome);
+  }
+
+  const userRoleSelect = container.querySelector('#userRoleSelect');
+  if (userRoleSelect) {
+    userRoleSelect.addEventListener('change', (e) => {
+      const foundUser = DEMO_USERS.find(u => u.username === e.target.value);
+      if (foundUser && callbacks.onSelectUserRole) {
+        callbacks.onSelectUserRole(foundUser);
+      }
+    });
   }
 
   const logoutBtn = container.querySelector('#btnLogout');

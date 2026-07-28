@@ -5,7 +5,6 @@
 import { formatCPF, validateCPF, calculateAge } from '../utils/cpfValidator.js';
 
 export function renderAppointmentModal(container, state, callbacks) {
-  let selectedPatient = null;
   let form = {
     patientName: '',
     cpf: '',
@@ -20,8 +19,8 @@ export function renderAppointmentModal(container, state, callbacks) {
     room: 'Sala 1 - Ultrassonografia 4D'
   };
 
-  if (!state.appointments) {
-    state.appointments = [];
+  if (!state.appointmentsList) {
+    state.appointmentsList = [];
   }
 
   function render() {
@@ -37,7 +36,7 @@ export function renderAppointmentModal(container, state, callbacks) {
                 Agendar Novo Exame / Consulta — Recepção
               </h2>
               <span style="font-size: 0.75rem; color: var(--text-muted);">
-                Marque dia, horário, sala e dados do paciente para a fila de recepção.
+                Ao agendar, o paciente entra na Fila da Recepção e na Worklist do Médico Radiologista.
               </span>
             </div>
             <button class="btn-icon" id="btnCloseAppModal" style="width: 28px; height: 28px;">
@@ -184,26 +183,57 @@ export function renderAppointmentModal(container, state, callbacks) {
       form.examType = container.querySelector('#appExamType').value;
       form.room = container.querySelector('#appRoom').value;
 
+      const studyId = `EX-${Math.floor(10000 + Math.random() * 90000)}`;
+
       const newApp = {
         id: `AG-${Math.floor(10000 + Math.random() * 90000)}`,
+        studyId: studyId,
         patientName: form.patientName,
         cpf: form.cpf || '000.000.000-00',
+        patientId: `CPF: ${form.cpf || '000.000.000-00'}`,
         phone: form.phone || '(11) 98888-0000',
-        time: `${form.date} ${form.time}`,
+        time: `${form.time}`,
+        date: form.date,
         examType: form.examType,
+        exam: form.examType,
+        modality: "US",
         room: form.room,
         agreement: form.agreement,
         status: "AGENDADO",
-        accessKey: `PAC-${Math.floor(100000 + Math.random() * 900000)}`
+        accessionNumber: `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`
       };
 
-      if (!state.appointmentsList) {
-        state.appointmentsList = [];
-      }
       state.appointmentsList.unshift(newApp);
 
+      // AUTOMATICALLY CREATE STUDY IN WORKLIST RIS (state.studies)
+      const newStudy = {
+        id: studyId,
+        patientName: form.patientName,
+        patientId: `CPF: ${form.cpf || '000.000.000-00'}`,
+        age: "42a",
+        gender: "M",
+        modality: "US",
+        studyDescription: form.examType,
+        date: `${form.date} ${form.time}`,
+        modalitiesInStudy: ["US"],
+        seriesCount: 1,
+        instanceCount: 1,
+        status: "pronto",
+        urgency: "normal",
+        physician: "Dr. Plantonista Radiologia",
+        institution: "NEXUSRAD DIAGNÓSTICO POR IMAGEM",
+        accessionNumber: newApp.accessionNumber,
+        capturedFrames: []
+      };
+
+      state.studies.unshift(newStudy);
+      if (state.filteredStudies) {
+        state.filteredStudies.unshift(newStudy);
+      }
+
       closeModal();
-      alert(`✅ Agendamento de ${form.patientName} para ${form.date} às ${form.time} realizado com sucesso!`);
+      alert(`✅ Agendamento de ${form.patientName} realizado com sucesso!\n\n1. Entrou na Tabela da Recepção (Menu Agenda).\n2. Criado na Fila Worklist RIS do Médico Radiologista.`);
+      
       if (callbacks.onAppointmentSaved) {
         callbacks.onAppointmentSaved(newApp);
       }

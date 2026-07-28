@@ -4,7 +4,7 @@
 // ==========================================================================
 
 import './style.css';
-import { createIcons, Activity, Search, ListFilter, Eye, FileText, UploadCloud, Sun, Ruler, CircleDot, ZoomIn, Move, Contrast, RotateCcw, RotateCw, Play, Pause, Sparkles, FileCheck2, Mic, Save, Printer, ShieldCheck, RadioReceiver, X, FolderOpen, Inbox, Columns, Loader, User, Lock, LogIn, LogOut, Calendar, CreditCard, Settings, UserPlus, Download, Building, Camera, Power, Video, Globe, ArrowLeft, ArrowRight, Share2, Send, Clock, Maximize2, Columns2, Keyboard, Edit, Trash2, DollarSign, LayoutDashboard, FilePlus, Triangle, ArrowUpRight } from 'lucide';
+import { createIcons, Activity, Search, ListFilter, Eye, FileText, UploadCloud, Sun, Ruler, CircleDot, ZoomIn, Move, Contrast, RotateCcw, RotateCw, Play, Pause, Sparkles, FileCheck2, Mic, Save, Printer, ShieldCheck, RadioReceiver, X, FolderOpen, Inbox, Columns, Loader, User, Lock, LogIn, LogOut, Calendar, CreditCard, Settings, UserPlus, Download, Building, Camera, Power, Video, Globe, ArrowLeft, ArrowRight, Share2, Send, Clock, Maximize2, Columns2, Keyboard, Edit, Trash2, DollarSign, LayoutDashboard, FilePlus, Triangle, ArrowUpRight, History, UserCheck, Key, BarChart2 } from 'lucide';
 import { MOCK_WORKLIST } from './data/mockData.js';
 import { renderHeader } from './components/Header.js';
 import { renderWorklist } from './components/Worklist.js';
@@ -17,6 +17,8 @@ import { renderBilling } from './components/Billing.js';
 import { renderClinicSettings } from './components/ClinicSettings.js';
 import { renderPatientPortalPage } from './components/PatientPortalPage.js';
 import { renderCrudManagement } from './components/CrudManagement.js';
+import { renderMedicalRecordPage } from './components/MedicalRecordPage.js';
+import { renderDashboard } from './components/Dashboard.js';
 
 // State
 const state = {
@@ -26,7 +28,7 @@ const state = {
   filteredStudies: [...MOCK_WORKLIST],
   activeModality: 'TODOS',
   searchTerm: '',
-  currentView: 'worklist', // 'worklist' | 'appointments' | 'viewer' | 'report' | 'split' | 'portal' | 'crud' | 'billing' | 'settings'
+  currentView: 'worklist', // 'dashboard' | 'worklist' | 'appointments' | 'viewer' | 'report' | 'split' | 'record' | 'portal' | 'crud' | 'billing' | 'settings'
   selectedStudyId: null,
   viewerState: {
     sliceIndex: 1,
@@ -71,6 +73,9 @@ function init() {
     <div class="app-body">
       <!-- Standard Brazilian PACS/RIS Sidebar Navigation (Pixeon / Animati / Soul MV Style) -->
       <nav class="sidebar-nav">
+        <div class="nav-item ${state.currentView === 'dashboard' ? 'active' : ''}" id="navDashboard" title="Painel Dashboard Executivo & KPIs Radiológicos">
+          <i data-lucide="layout-dashboard"></i>
+        </div>
         <div class="nav-item ${state.currentView === 'worklist' ? 'active' : ''}" id="navWorklist" title="Central de Laudos & Worklist RIS (Atalho: W)">
           <i data-lucide="list-filter"></i>
         </div>
@@ -85,6 +90,9 @@ function init() {
         </div>
         <div class="nav-item ${state.currentView === 'split' ? 'active' : ''}" id="navSplit" title="Estação 2 Monitores / Visão Dividida (Atalho: S)">
           <i data-lucide="columns-2"></i>
+        </div>
+        <div class="nav-item ${state.currentView === 'record' ? 'active' : ''}" id="navRecord" title="Prontuário Médico Eletrônico & Central do Médico Solicitante">
+          <i data-lucide="history"></i>
         </div>
         <div class="nav-item ${state.currentView === 'portal' ? 'active' : ''}" id="navPortal" title="Portal de Entrega de Exames ao Paciente & Médico">
           <i data-lucide="globe"></i>
@@ -109,7 +117,13 @@ function init() {
     onSelectModality: handleSelectModality,
     onOpenUpload: openUploadModal,
     onWizardComplete: (newStudy) => {
-      switchView('viewer', newStudy.id);
+      state.selectedStudyId = newStudy.id;
+      applyFilters();
+      switchView('worklist');
+    },
+    onSelectUserRole: (user) => {
+      state.currentUser = user;
+      init();
     },
     onGoHome: () => switchView('worklist'),
     onLogout: handleLogout
@@ -122,6 +136,7 @@ function init() {
 
   setupKeyboardHotkeys();
 
+  document.querySelector('#navDashboard')?.addEventListener('click', () => switchView('dashboard'));
   document.querySelector('#navWorklist')?.addEventListener('click', () => switchView('worklist'));
   document.querySelector('#navAppointments')?.addEventListener('click', () => switchView('appointments'));
   document.querySelector('#navViewer')?.addEventListener('click', () => {
@@ -136,6 +151,7 @@ function init() {
     if (!state.selectedStudyId && state.studies.length > 0) state.selectedStudyId = state.studies[0].id;
     switchView('split');
   });
+  document.querySelector('#navRecord')?.addEventListener('click', () => switchView('record'));
   document.querySelector('#navPortal')?.addEventListener('click', () => switchView('portal'));
   document.querySelector('#navCrud')?.addEventListener('click', () => switchView('crud'));
   document.querySelector('#navBilling')?.addEventListener('click', () => switchView('billing'));
@@ -174,7 +190,7 @@ function handleLogout() {
 function refreshIcons() {
   createIcons({
     icons: {
-      Activity, Search, ListFilter, Eye, FileText, UploadCloud, Sun, Ruler, CircleDot, ZoomIn, Move, Contrast, RotateCcw, RotateCw, Play, Pause, Sparkles, FileCheck2, Mic, Save, Printer, ShieldCheck, RadioReceiver, X, FolderOpen, Inbox, Columns, Loader, User, Lock, LogIn, LogOut, Calendar, CreditCard, Settings, UserPlus, Download, Building, Camera, Power, Video, Globe, ArrowLeft, ArrowRight, Share2, Send, Clock, Maximize2, Columns2, Keyboard, Edit, Trash2, DollarSign, LayoutDashboard, FilePlus, Triangle, ArrowUpRight
+      Activity, Search, ListFilter, Eye, FileText, UploadCloud, Sun, Ruler, CircleDot, ZoomIn, Move, Contrast, RotateCcw, RotateCw, Play, Pause, Sparkles, FileCheck2, Mic, Save, Printer, ShieldCheck, RadioReceiver, X, FolderOpen, Inbox, Columns, Loader, User, Lock, LogIn, LogOut, Calendar, CreditCard, Settings, UserPlus, Download, Building, Camera, Power, Video, Globe, ArrowLeft, ArrowRight, Share2, Send, Clock, Maximize2, Columns2, Keyboard, Edit, Trash2, DollarSign, LayoutDashboard, FilePlus, Triangle, ArrowUpRight, History, UserCheck, Key, BarChart2
     }
   });
 }
@@ -209,7 +225,13 @@ function handleSelectModality(modality) {
     onSelectModality: handleSelectModality,
     onOpenUpload: openUploadModal,
     onWizardComplete: (newStudy) => {
-      switchView('viewer', newStudy.id);
+      state.selectedStudyId = newStudy.id;
+      applyFilters();
+      switchView('worklist');
+    },
+    onSelectUserRole: (user) => {
+      state.currentUser = user;
+      init();
     },
     onGoHome: () => switchView('worklist'),
     onLogout: handleLogout
@@ -231,11 +253,13 @@ function switchView(viewName, studyId = null) {
   }
   
   document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+  if (viewName === 'dashboard') document.querySelector('#navDashboard')?.classList.add('active');
   if (viewName === 'worklist') document.querySelector('#navWorklist')?.classList.add('active');
   if (viewName === 'appointments') document.querySelector('#navAppointments')?.classList.add('active');
   if (viewName === 'viewer') document.querySelector('#navViewer')?.classList.add('active');
   if (viewName === 'report') document.querySelector('#navReport')?.classList.add('active');
   if (viewName === 'split') document.querySelector('#navSplit')?.classList.add('active');
+  if (viewName === 'record') document.querySelector('#navRecord')?.classList.add('active');
   if (viewName === 'portal') document.querySelector('#navPortal')?.classList.add('active');
   if (viewName === 'crud') document.querySelector('#navCrud')?.classList.add('active');
   if (viewName === 'billing') document.querySelector('#navBilling')?.classList.add('active');
@@ -250,7 +274,9 @@ function renderWorkspace() {
 
   const study = state.selectedStudyId ? state.studies.find(s => s.id === state.selectedStudyId) : state.studies[0];
 
-  if (state.currentView === 'worklist') {
+  if (state.currentView === 'dashboard') {
+    renderDashboard(container, state, {});
+  } else if (state.currentView === 'worklist') {
     renderWorklist(container, state.filteredStudies, {
       onOpenViewer: (id) => switchView('viewer', id),
       onOpenReport: (id) => switchView('report', id)
@@ -263,6 +289,12 @@ function renderWorkspace() {
     renderClinicSettings(container, state, {});
   } else if (state.currentView === 'crud') {
     renderCrudManagement(container, state, {});
+  } else if (state.currentView === 'record') {
+    renderMedicalRecordPage(container, study, state.studies, {
+      onBack: () => switchView('worklist'),
+      onOpenViewer: (id) => switchView('viewer', id),
+      onOpenPortal: (id) => switchView('portal', id)
+    });
   } else if (state.currentView === 'portal') {
     renderPatientPortalPage(container, study, state.studies, {
       onBack: () => switchView('worklist')
@@ -313,20 +345,20 @@ function openUploadModal() {
 function handleNewUpload(fileName, rawDicomObject = null) {
   const newStudy = {
     id: `EX-${Math.floor(10000 + Math.random() * 90000)}`,
-    patientName: rawDicomObject ? rawDicomObject.patientName : "PACIENTE DICOM IMPORTADO",
-    patientId: rawDicomObject ? rawDicomObject.patientId : `CPF: ${Math.floor(100 + Math.random() * 899)}.000.111-00`,
-    age: "45a",
-    gender: "F",
-    modality: rawDicomObject ? rawDicomObject.modality : "CT",
-    studyDescription: rawDicomObject ? rawDicomObject.studyDescription : `EXAME DICOM: ${fileName.toUpperCase()}`,
+    patientName: rawDicomObject ? rawDicomObject.patientName : "ERICK LIMA",
+    patientId: rawDicomObject ? rawDicomObject.patientId : `CPF: 123.456.789-00`,
+    age: "38a",
+    gender: "M",
+    modality: rawDicomObject ? rawDicomObject.modality : "US",
+    studyDescription: rawDicomObject ? rawDicomObject.studyDescription : `ULTRASSOM DE ABDÔMEN TOTAL: ${fileName.toUpperCase()}`,
     date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-    modalitiesInStudy: [rawDicomObject ? rawDicomObject.modality : "CT"],
+    modalitiesInStudy: [rawDicomObject ? rawDicomObject.modality : "US"],
     seriesCount: 1,
     instanceCount: 1,
     status: "pronto",
     urgency: "alta",
     physician: state.currentUser ? state.currentUser.name : "Dr. Plantonista Radiologia",
-    institution: "HOSPITAL CENTRAL DIAGNÓSTICOS",
+    institution: "NEXUSRAD DIAGNÓSTICO POR IMAGEM",
     accessionNumber: `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`,
     kvp: "120 kV",
     ma: "240 mA",
@@ -336,14 +368,14 @@ function handleNewUpload(fileName, rawDicomObject = null) {
       type: "Estudo Binário Lido",
       confidence: "99.0%",
       box: { x: 25, y: 25, width: 40, height: 40 },
-      description: "Arquivo DICOM binário (.dcm) importado. Matriz de pixels disponível no Viewer."
+      description: "Arquivo DICOM importado com sucesso para o paciente."
     }
   };
 
   state.studies.unshift(newStudy);
   state.selectedStudyId = newStudy.id;
   applyFilters();
-  switchView('viewer', newStudy.id);
+  switchView('worklist');
 }
 
 document.addEventListener('DOMContentLoaded', init);
