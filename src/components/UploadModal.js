@@ -1,31 +1,122 @@
 // ==========================================================================
-// NexusRad AI - Upload DICOM Modal Component
-// High-Visibility Close Button (✕) & Automatic Icon Render
+// NexusRad AI - Professional DICOM & Image Multi-File Import Modal
+// Supports Multiple File Selection, Patient Name Association & Single-Study Grouping
 // ==========================================================================
 
 import { parseDicomFile } from '../utils/dicomParser.js';
-import { createIcons, X, UploadCloud } from 'lucide';
+import { createIcons } from 'lucide';
+import * as LucideIcons from 'lucide';
 
 export function renderUploadModal(container, callbacks) {
+  let selectedFiles = [];
+  let parsedDicomMetadata = null;
+
   container.innerHTML = `
     <div class="modal-backdrop" id="modalBackdrop">
-      <div class="modal-card">
+      <div class="modal-card" style="max-width: 650px; width: 90%; max-height: 90vh; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto;">
+        
+        <!-- Header -->
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.75rem;">
-          <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--primary-cyan);">
-            Importar Arquivo DICOM (.dcm / Binary)
+          <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--primary-cyan); display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="upload-cloud"></i>
+            Importar Série de Arquivos DICOM / Imagens (.dcm, .jpg, .png)
           </h3>
-          <!-- Crisp Visible Close Button (✕) -->
-          <button class="btn-icon modal-close-btn" id="closeModalBtn" title="Fechar Janela" style="background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border-light); color: #FFF; font-size: 1.2rem; font-weight: 700; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+          <button class="btn-icon modal-close-btn" id="closeModalBtn" title="Fechar Janela" style="background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border-light); color: #FFF; font-size: 1.2rem; font-weight: 700; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
             ✕
           </button>
         </div>
 
-        <div class="dropzone" id="dropzone">
-          <i data-lucide="upload-cloud" style="width: 48px; height: 48px; color: var(--primary-cyan); margin-bottom: 1rem;"></i>
-          <h4 style="margin-bottom: 0.5rem;">Arraste & Solte seu arquivo .dcm aqui</h4>
-          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">Suporta arquivos DICOM 3.0 brutos de Tomografia, Ultrassom, Raio-X ou Mamografia</p>
-          <button class="btn-primary" id="selectFileBtn">Selecionar Arquivo do Computador</button>
-          <input type="file" id="fileInput" accept=".dcm, .dicom, image/*" style="display: none;">
+        <!-- Step 1: Dropzone -->
+        <div id="uploadStep1" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div class="dropzone" id="dropzone" style="border: 2px dashed var(--primary-cyan); border-radius: 12px; padding: 2rem 1.5rem; text-align: center; background: rgba(0, 229, 255, 0.03); cursor: pointer; transition: all 0.2s;">
+            <i data-lucide="folder-open" style="width: 52px; height: 52px; color: var(--primary-cyan); margin-bottom: 0.75rem;"></i>
+            <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.35rem; color: #FFF;">
+              Arraste & Solte Vários Arquivos (.dcm / Imagens) Aqui
+            </h4>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+              Você pode selecionar ou arrastar múltiplos arquivos de uma só vez (ex: 1, 10 ou 50 imagens do mesmo exame).
+            </p>
+            <button class="btn-primary" id="selectFileBtn" style="background: linear-gradient(135deg, #00E5FF 0%, #3B82F6 100%); border: none; font-weight: 700; padding: 0.6rem 1.25rem;">
+              <i data-lucide="file-plus" style="width: 16px; height: 16px;"></i>
+              <span>Selecionar Vários Arquivos do Computador</span>
+            </button>
+            <input type="file" id="fileInput" accept=".dcm, .dicom, image/*" multiple style="display: none;">
+          </div>
+        </div>
+
+        <!-- Step 2: Patient Association & Examination Details (Appears when files are selected) -->
+        <div id="uploadStep2" style="display: none; flex-direction: column; gap: 1rem; background: rgba(15, 23, 42, 0.6); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--border-light);">
+          
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); padding-bottom: 0.6rem;">
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--status-ready); display: flex; align-items: center; gap: 0.4rem;">
+              <i data-lucide="check-circle-2" style="width: 16px; height: 16px;"></i>
+              <span id="lblFileCount">18 Arquivos Selecionados</span>
+            </span>
+
+            <button class="btn-secondary" id="btnResetSelection" style="font-size: 0.72rem; padding: 0.25rem 0.6rem;">
+              🔄 Escolher Outros Arquivos
+            </button>
+          </div>
+
+          <!-- Patient Association Dropdown / Input -->
+          <div class="form-group">
+            <label style="font-size: 0.8rem; font-weight: 700; color: var(--primary-cyan);">
+              👤 Associar ao Cadastro do Paciente:
+            </label>
+            <select id="uPatientSelect" class="form-select" style="font-size: 0.85rem; font-weight: 600; background: #0F172A; color: #FFF;">
+              <option value="new">+ Cadastrar Novo Paciente / Usar Dados do Cabeçalho</option>
+            </select>
+          </div>
+
+          <!-- Patient Details Fields -->
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label style="font-size: 0.75rem;">Nome Completo do Paciente:</label>
+              <input type="text" id="uPatientName" class="form-select" placeholder="Ex: ERICK LIMA" value="ERICK LIMA">
+            </div>
+
+            <div class="form-group">
+              <label style="font-size: 0.75rem;">CPF / Prontuário:</label>
+              <input type="text" id="uPatientCpf" class="form-select" placeholder="CPF: 123.456.789-00" value="CPF: 123.456.789-00">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label style="font-size: 0.75rem;">Modalidade:</label>
+              <select id="uModality" class="form-select" style="background: #0F172A; color: #FFF;">
+                <option value="US">Ultrassonografia (US)</option>
+                <option value="CT">Tomografia (TC)</option>
+                <option value="RM">Ressonância (RM)</option>
+                <option value="RX">Raio-X (RX)</option>
+                <option value="MG">Mamografia (MG)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label style="font-size: 0.75rem;">Idade / Sexo:</label>
+              <input type="text" id="uPatientAgeSex" class="form-select" value="38a / M">
+            </div>
+
+            <div class="form-group">
+              <label style="font-size: 0.75rem;">Convênio:</label>
+              <input type="text" id="uAgreement" class="form-select" value="Bradesco Saúde">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label style="font-size: 0.75rem;">Descrição do Exame / Estudo:</label>
+            <input type="text" id="uStudyDescription" class="form-select" value="ULTRASSOM DE ABDÔMEN TOTAL COM DOPPLER">
+          </div>
+
+          <!-- Submit Button -->
+          <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+            <button class="btn-secondary" id="btnCancelStep2">Cancelar</button>
+            <button class="btn-primary" id="btnConfirmImport" style="background: var(--status-ready); border-color: var(--status-ready); font-weight: 700; padding: 0.65rem 1.25rem;">
+              🚀 Confirmar & Importar Exame Completo
+            </button>
+          </div>
+
         </div>
 
         <div id="uploadStatus" style="font-size: 0.85rem; color: var(--text-muted); text-align: center;"></div>
@@ -39,10 +130,22 @@ export function renderUploadModal(container, callbacks) {
   const fileInput = container.querySelector('#fileInput');
   const selectFileBtn = container.querySelector('#selectFileBtn');
   const uploadStatus = container.querySelector('#uploadStatus');
+  const uploadStep1 = container.querySelector('#uploadStep1');
+  const uploadStep2 = container.querySelector('#uploadStep2');
+  const lblFileCount = container.querySelector('#lblFileCount');
+  const uPatientSelect = container.querySelector('#uPatientSelect');
+  const uPatientName = container.querySelector('#uPatientName');
+  const uPatientCpf = container.querySelector('#uPatientCpf');
+  const uModality = container.querySelector('#uModality');
+  const uStudyDescription = container.querySelector('#uStudyDescription');
 
   function closeModal() {
     backdrop.classList.remove('open');
     uploadStatus.textContent = '';
+    uploadStep1.style.display = 'flex';
+    uploadStep2.style.display = 'none';
+    selectedFiles = [];
+    parsedDicomMetadata = null;
   }
 
   closeBtn.addEventListener('click', closeModal);
@@ -68,44 +171,151 @@ export function renderUploadModal(container, callbacks) {
     dropzone.style.borderColor = '';
     dropzone.style.background = '';
     if (e.dataTransfer.files.length > 0) {
-      handleFile(e.dataTransfer.files[0]);
+      processSelectedFiles(Array.from(e.dataTransfer.files));
     }
   });
 
   fileInput.addEventListener('change', (e) => {
     if (e.target.files.length > 0) {
-      handleFile(e.target.files[0]);
+      processSelectedFiles(Array.from(e.target.files));
     }
   });
 
-  async function handleFile(file) {
-    uploadStatus.textContent = `Lendo cabeçalho DICOM: ${file.name}...`;
+  container.querySelector('#btnResetSelection')?.addEventListener('click', () => {
+    uploadStep1.style.display = 'flex';
+    uploadStep2.style.display = 'none';
+    selectedFiles = [];
+  });
 
+  container.querySelector('#btnCancelStep2')?.addEventListener('click', closeModal);
+
+  async function processSelectedFiles(files) {
+    selectedFiles = files;
+    uploadStatus.textContent = `Lendo cabeçalho de ${files.length} arquivo(s)...`;
+
+    // Populate Registered Patients in Dropdown if available
+    const registeredPatients = callbacks.getPatients ? callbacks.getPatients() : [];
+    uPatientSelect.innerHTML = `<option value="new">+ Usar Dados do Cabeçalho / Digitar Nome</option>` +
+      registeredPatients.map(p => `
+        <option value="${p.id}">${p.name} (${p.id}) — Convênio: ${p.agreement || 'Bradesco'}</option>
+      `).join('');
+
+    // Try parsing first DICOM file to extract metadata tags
     try {
-      const buffer = await file.arrayBuffer();
-      const rawDicomObj = parseDicomFile(buffer);
-      
-      uploadStatus.style.color = '#10B981';
-      uploadStatus.textContent = `✅ Arquivo DICOM Válido (${rawDicomObj ? rawDicomObj.patientName : 'Paciente Importado'})! Processando...`;
+      const firstFile = files[0];
+      const buffer = await firstFile.arrayBuffer();
+      parsedDicomMetadata = parseDicomFile(buffer);
 
-      setTimeout(() => {
-        closeModal();
-        callbacks.onUploadComplete(file.name, rawDicomObj);
-      }, 700);
-
+      if (parsedDicomMetadata && parsedDicomMetadata.patientName && parsedDicomMetadata.patientName !== 'PACIENTE DICOM LOCAL') {
+        uPatientName.value = parsedDicomMetadata.patientName;
+        uPatientCpf.value = parsedDicomMetadata.patientId || `CPF: 123.456.789-00`;
+        uModality.value = parsedDicomMetadata.modality || "US";
+        uStudyDescription.value = parsedDicomMetadata.studyDescription || `EXAME DICOM (${files.length} IMAGENS)`;
+      } else {
+        uPatientName.value = "ERICK LIMA";
+        uPatientCpf.value = "CPF: 123.456.789-00";
+        uStudyDescription.value = `EXAME IMPORTADO DE ${files.length} IMAGENS`;
+      }
     } catch (err) {
-      console.warn("Erro ao fazer parse do DICOM bruto:", err);
-      uploadStatus.style.color = '#10B981';
-      uploadStatus.textContent = `✅ Arquivo ${file.name} carregado com sucesso!`;
-
-      setTimeout(() => {
-        closeModal();
-        callbacks.onUploadComplete(file.name, null);
-      }, 700);
+      console.warn("Parsing first DICOM file metadata:", err);
+      uPatientName.value = "ERICK LIMA";
+      uPatientCpf.value = "CPF: 123.456.789-00";
     }
+
+    lblFileCount.textContent = `📁 ${files.length} Arquivo(s) Selecionado(s) para Agrupamento em 1 Exame`;
+    uploadStep1.style.display = 'none';
+    uploadStep2.style.display = 'flex';
+    uploadStatus.textContent = '';
   }
 
+  uPatientSelect?.addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (val === 'new') return;
+    const registeredPatients = callbacks.getPatients ? callbacks.getPatients() : [];
+    const found = registeredPatients.find(p => p.id === val);
+    if (found) {
+      uPatientName.value = found.name;
+      uPatientCpf.value = found.id;
+    }
+  });
+
+  // Final Confirmation & Creation of 1 Single Grouped Study
+  container.querySelector('#btnConfirmImport')?.addEventListener('click', async () => {
+    const name = uPatientName.value.trim().toUpperCase() || "ERICK LIMA";
+    const cpf = uPatientCpf.value.trim() || "CPF: 123.456.789-00";
+    const modality = uModality.value;
+    const description = uStudyDescription.value.trim().toUpperCase() || `EXAME IMPORTADO (${selectedFiles.length} IMAGENS)`;
+
+    uploadStatus.style.color = '#10B981';
+    uploadStatus.textContent = `⏳ Criando exame único para ${name} com ${selectedFiles.length} imagens...`;
+
+    // Process all files into dataUrls / captured frames
+    const capturedFrames = [];
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        capturedFrames.push({
+          id: `FRAME-${Date.now()}_${i}`,
+          dataUrl: dataUrl,
+          source: file.name,
+          timestamp: new Date().toLocaleTimeString()
+        });
+      } catch (err) {
+        console.error("Error reading file:", file.name, err);
+      }
+    }
+
+    const newStudy = {
+      id: `EX-${Math.floor(10000 + Math.random() * 90000)}`,
+      patientName: name,
+      patientId: cpf,
+      age: "38a",
+      gender: "M",
+      modality: modality,
+      studyDescription: description,
+      date: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      modalitiesInStudy: [modality],
+      seriesCount: 1,
+      instanceCount: selectedFiles.length,
+      status: "pronto",
+      urgency: "normal",
+      physician: "Dr. Carlos Roberto de Mendonça",
+      institution: "NEXUSRAD DIAGNÓSTICO POR IMAGEM",
+      accessionNumber: `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`,
+      kvp: "Standard DICOM",
+      ma: "Auto Gain",
+      sliceThickness: "1.0 mm",
+      capturedFrames: capturedFrames,
+      rawDicomObject: parsedDicomMetadata,
+      aiFinding: {
+        type: "Série DICOM Importada com Sucesso",
+        confidence: "99.0%",
+        box: { x: 25, y: 25, width: 40, height: 40 },
+        description: `Importação de ${selectedFiles.length} arquivos associada ao paciente ${name}.`
+      }
+    };
+
+    setTimeout(() => {
+      closeModal();
+      if (callbacks.onUploadComplete) callbacks.onUploadComplete(newStudy);
+    }, 600);
+  });
+
+  refreshIcons();
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = (e) => reject(e);
+    reader.readAsDataURL(file);
+  });
+}
+
+function refreshIcons() {
   createIcons({
-    icons: { X, UploadCloud }
+    icons: LucideIcons
   });
 }

@@ -179,6 +179,7 @@ function init() {
 
   renderWorkspace();
   renderUploadModal(document.querySelector('#modalContainer'), {
+    getPatients: () => state.customPatients || [],
     onUploadComplete: handleNewUpload
   });
 
@@ -404,41 +405,46 @@ function openUploadModal() {
   if (backdrop) backdrop.classList.add('open');
 }
 
-function handleNewUpload(fileName, rawDicomObject = null) {
-  const newStudy = {
-    id: `EX-${Math.floor(10000 + Math.random() * 90000)}`,
-    patientName: rawDicomObject ? rawDicomObject.patientName : "ERICK LIMA",
-    patientId: rawDicomObject ? rawDicomObject.patientId : `CPF: 123.456.789-00`,
-    age: "38a",
-    gender: "M",
-    modality: rawDicomObject ? rawDicomObject.modality : "US",
-    studyDescription: rawDicomObject ? rawDicomObject.studyDescription : `ULTRASSOM DE ABDÔMEN TOTAL: ${fileName.toUpperCase()}`,
-    date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-    modalitiesInStudy: [rawDicomObject ? rawDicomObject.modality : "US"],
-    seriesCount: 1,
-    instanceCount: 1,
-    status: "pronto",
-    urgency: "alta",
-    physician: state.currentUser ? state.currentUser.name : "Dr. Plantonista Radiologia",
-    institution: "NEXUSRAD DIAGNÓSTICO POR IMAGEM",
-    accessionNumber: `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`,
-    kvp: "120 kV",
-    ma: "240 mA",
-    sliceThickness: "1.0 mm",
-    rawDicomObject: rawDicomObject,
-    aiFinding: {
-      type: "Estudo Binário Lido",
-      confidence: "99.0%",
-      box: { x: 25, y: 25, width: 40, height: 40 },
-      description: "Arquivo DICOM importado com sucesso para o paciente."
-    }
-  };
+function handleNewUpload(importedStudy) {
+  let newStudy = importedStudy;
+
+  if (typeof importedStudy === 'string') {
+    newStudy = {
+      id: `EX-${Math.floor(10000 + Math.random() * 90000)}`,
+      patientName: "ERICK LIMA",
+      patientId: `CPF: 123.456.789-00`,
+      age: "38a",
+      gender: "M",
+      modality: "US",
+      studyDescription: `ULTRASSOM DE ABDÔMEN TOTAL: ${importedStudy.toUpperCase()}`,
+      date: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      modalitiesInStudy: ["US"],
+      seriesCount: 1,
+      instanceCount: 1,
+      status: "pronto",
+      urgency: "normal",
+      physician: state.currentUser ? state.currentUser.name : "Dr. Plantonista Radiologia",
+      institution: "NEXUSRAD DIAGNÓSTICO POR IMAGEM",
+      accessionNumber: `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`,
+      kvp: "120 kV",
+      ma: "240 mA",
+      sliceThickness: "1.0 mm",
+      aiFinding: {
+        type: "Estudo Binário Lido",
+        confidence: "99.0%",
+        box: { x: 25, y: 25, width: 40, height: 40 },
+        description: "Arquivo DICOM importado com sucesso para o paciente."
+      }
+    };
+  }
 
   state.studies.unshift(newStudy);
   state.selectedStudyId = newStudy.id;
   saveStudiesToStorage(state.studies);
   applyFilters();
-  switchView('worklist');
+
+  showToast(`✅ Exame do paciente "${newStudy.patientName}" com ${newStudy.instanceCount} imagem(ns) importado com sucesso!`, 'success');
+  switchView('viewer');
 }
 
 document.addEventListener('DOMContentLoaded', init);
