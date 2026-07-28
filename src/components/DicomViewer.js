@@ -1,0 +1,581 @@
+// ==========================================================================
+// NexusRad AI - Professional Organized Radiology & Ultrasound Viewer Engine
+// ==========================================================================
+
+import { renderDicomSlice } from '../utils/dicomGenerator.js';
+import { renderRawDicomToCanvas } from '../utils/dicomParser.js';
+
+let activeMediaStream = null;
+
+export function stopActiveVideoCapture() {
+  if (activeMediaStream) {
+    activeMediaStream.getTracks().forEach(track => track.stop());
+    activeMediaStream = null;
+  }
+}
+
+export function renderDicomViewer(container, study, state, callbacks) {
+  stopActiveVideoCapture();
+
+  let sliceIndex = state.viewerState?.sliceIndex || 1;
+  let activeTool = state.viewerState?.activeTool || 'windowing';
+  let windowWidth = state.viewerState?.windowWidth || (study.modality === 'CT' ? 1500 : 400);
+  let windowLevel = state.viewerState?.windowLevel || (study.modality === 'CT' ? -600 : 40);
+  let inverted = state.viewerState?.inverted || false;
+  let rotationAngle = 0;
+  let showAiOverlay = state.viewerState?.showAiOverlay !== false;
+  let zoom = state.viewerState?.zoom || 1;
+  let pan = state.viewerState?.pan || { x: 0, y: 0 };
+  let measurements = study.measurements || [];
+  let isVideoCaptureActive = false;
+  let rawDicomObject = study.rawDicomObject || null;
+
+  let isMouseDown = false;
+  let startX = 0;
+  let startY = 0;
+  let currentMeasurementDraft = null;
+
+  if (!study.capturedFrames) {
+    study.capturedFrames = [];
+  }
+
+  container.innerHTML = `
+    <div class="dicom-pane" style="height: 100%; border-right: none; display: flex; flex-direction: column; background: #000; user-select: none;">
+      
+      <!-- Clean Organized Toolbar Top (Grouped Sections) -->
+      <div class="viewer-toolbar" style="padding: 0.5rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid var(--border-light); flex-wrap: wrap;">
+        
+        <!-- Group 1: Image Manipulation -->
+        <div style="display: flex; align-items: center; gap: 0.35rem;">
+          <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-right: 0.2rem;">IMAGEM:</span>
+
+          <button class="tool-btn ${activeTool === 'windowing' ? 'active' : ''}" id="toolWindowing" title="Janelamento (Arraste no Canvas)">
+            <i data-lucide="sun" style="width: 15px; height: 15px;"></i>
+            <span>Janelamento</span>
+          </button>
+          
+          <select class="window-select" id="presetSelect" style="font-size: 0.7rem; padding: 0.25rem 0.5rem;">
+            <option value="default">Janela Padrão</option>
+            <option value="lung" ${study.modality === 'CT' ? 'selected' : ''}>Pulmão</option>
+            <option value="bone">Osso</option>
+            <option value="soft">Partes Moles</option>
+            <option value="brain">Cerebral</option>
+          </select>
+
+          <button class="tool-btn ${activeTool === 'zoom' ? 'active' : ''}" id="toolZoom" title="Zoom">
+            <i data-lucide="zoom-in" style="width: 15px; height: 15px;"></i>
+            <span>Zoom</span>
+          </button>
+
+          <button class="tool-btn ${activeTool === 'pan' ? 'active' : ''}" id="toolPan" title="Pan">
+            <i data-lucide="move" style="width: 15px; height: 15px;"></i>
+            <span>Pan</span>
+          </button>
+
+          <button class="tool-btn ${inverted ? 'active' : ''}" id="toolInvert" title="Inverter Cores">
+            <i data-lucide="contrast" style="width: 15px; height: 15px;"></i>
+            <span>Inverter</span>
+          </button>
+
+          <button class="tool-btn" id="toolRotate" title="Girar 90°">
+            <i data-lucide="rotate-cw" style="width: 15px; height: 15px;"></i>
+            <span>Girar</span>
+          </button>
+
+          <button class="tool-btn" id="toolReset" title="Resetar">
+            <i data-lucide="rotate-ccw" style="width: 15px; height: 15px;"></i>
+            <span>Reset</span>
+          </button>
+        </div>
+
+        <div style="height: 20px; width: 1px; background: var(--border-light);"></div>
+
+        <!-- Group 2: Measurements -->
+        <div style="display: flex; align-items: center; gap: 0.35rem;">
+          <span style="font-size: 0.65rem; font-weight: 700; color: var(--primary-cyan); text-transform: uppercase; margin-right: 0.2rem;">MEDIÇÃO:</span>
+
+          <button class="tool-btn ${activeTool === 'line' ? 'active' : ''}" id="toolLine" title="Medir Distância (mm)">
+            <i data-lucide="ruler" style="width: 15px; height: 15px;"></i>
+            <span>Régua (mm)</span>
+          </button>
+
+          <button class="tool-btn ${activeTool === 'angle' ? 'active' : ''}" id="toolAngle" title="Medir Ângulo (°)">
+            <i data-lucide="triangle" style="width: 15px; height: 15px;"></i>
+            <span>Ângulo (°)</span>
+          </button>
+
+          <button class="tool-btn ${activeTool === 'roi' ? 'active' : ''}" id="toolRoi" title="Área ROI (HU)">
+            <i data-lucide="circle-dot" style="width: 15px; height: 15px;"></i>
+            <span>ROI (HU)</span>
+          </button>
+
+          <button class="tool-btn ${activeTool === 'arrow' ? 'active' : ''}" id="toolArrow" title="Anotar Seta">
+            <i data-lucide="arrow-up-right" style="width: 15px; height: 15px;"></i>
+            <span>Seta</span>
+          </button>
+        </div>
+
+        <div style="height: 20px; width: 1px; background: var(--border-light);"></div>
+
+        <!-- Group 3: Capture & Screens -->
+        <div style="display: flex; align-items: center; gap: 0.35rem;">
+          <button class="tool-btn" id="btnVideoCapture" style="border-color: var(--primary-cyan); background: rgba(0,229,255,0.1);">
+            <i data-lucide="video" style="width: 15px; height: 15px; color: var(--primary-cyan);"></i>
+            <span style="color: var(--primary-cyan); font-weight: 700;">Vídeo US</span>
+          </button>
+
+          <button class="tool-btn" id="btnManualSnap" style="background: rgba(16, 185, 129, 0.15); border-color: var(--status-ready);">
+            <i data-lucide="camera" style="width: 15px; height: 15px; color: var(--status-ready);"></i>
+            <span style="color: var(--status-ready); font-weight: 700;">📸 Foto</span>
+          </button>
+
+          <button class="tool-btn" id="btnNavReport" title="Ir para a Tela de Laudo">
+            <i data-lucide="file-text" style="width: 15px; height: 15px; color: var(--primary-cyan);"></i>
+            <span>Laudo</span>
+          </button>
+
+          <button class="tool-btn" id="btnNavSplit" title="Modo Dividido">
+            <i data-lucide="columns-2" style="width: 15px; height: 15px;"></i>
+            <span>Dividido</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Live Video Controls Bar -->
+      <div id="videoControlBar" style="display: none; background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid var(--border-active); padding: 0.5rem 1rem; align-items: center; justify-content: space-between; z-index: 30;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 0.75rem; font-weight: 700; color: var(--status-ready); display: flex; align-items: center; gap: 0.35rem;">
+            <span class="status-dot"></span> TRANSMISSÃO DE VÍDEO ULTRASSOM AO VIVO (60FPS)
+          </span>
+          <select id="videoSourceSelect" class="window-select" style="font-size: 0.7rem; max-width: 220px;">
+            <option value="">Selecione a Placa de Captura...</option>
+          </select>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <button class="btn-primary" id="btnSnapFrame" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;">
+            <i data-lucide="camera" style="width: 14px; height: 14px;"></i>
+            <span>📸 Capturar Imagem DICOM</span>
+          </button>
+          <button class="btn-secondary" id="btnStopVideo" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;">
+            <i data-lucide="power" style="width: 14px; height: 14px; color: #EF4444;"></i>
+            <span>Desativar Vídeo</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Viewport Stage Container -->
+      <div class="viewport-stage" id="viewportStage" style="flex: 1; display: flex; gap: 4px; padding: 4px; position: relative;">
+        <div id="primaryViewportContainer" style="flex: 1; position: relative; height: 100%; display: flex; align-items: center; justify-content: center; background: #000; overflow: hidden;">
+          
+          <!-- DICOM Interactive Canvas -->
+          <canvas id="dicomCanvas" width="512" height="512" style="cursor: crosshair; touch-action: none;"></canvas>
+          
+          <video id="usLiveVideo" autoplay playsinline style="display: none; width: 100%; height: 100%; object-fit: contain; background: #000;"></video>
+
+          <!-- HUD Overlays -->
+          <div class="hud-overlay hud-top-left">
+            <div><strong>PATIENT:</strong> ${study.patientName}</div>
+            <div><strong>ID:</strong> ${study.patientId}</div>
+            <div><strong>AGE/SEX:</strong> ${study.age} / ${study.gender}</div>
+          </div>
+
+          <div class="hud-overlay hud-top-right">
+            <div><strong>STUDY:</strong> ${study.studyDescription}</div>
+            <div><strong>ACC#:</strong> ${study.accessionNumber}</div>
+            <div><strong>MODALITY:</strong> ${study.modality}</div>
+          </div>
+
+          <div class="hud-overlay hud-bottom-left">
+            <div><strong>WW:</strong> <span id="hudWw">${windowWidth}</span> | <strong>WL:</strong> <span id="hudWl">${windowLevel}</span></div>
+            <div><strong>ZOOM:</strong> <span id="hudZoom">${(zoom * 100).toFixed(0)}%</span> | <strong>FERRAMENTA:</strong> <span id="hudActiveToolName" style="color: var(--primary-cyan); text-transform: uppercase;">${activeTool}</span></div>
+          </div>
+
+          <div class="hud-overlay hud-bottom-right">
+            <div><strong>FOTOS CAPTURADAS:</strong> <span id="hudCapturesCount" style="color: var(--primary-cyan); font-weight: 700;">${study.capturedFrames.length}</span></div>
+            <div><strong>STATUS:</strong> DICOM 3.0 OK</div>
+          </div>
+        </div>
+
+        ${study.instanceCount > 1 ? `
+          <div class="series-stack-bar">
+            <span style="font-size: 0.65rem; color: var(--primary-cyan); font-weight: 700;">SLICE</span>
+            <input type="range" id="sliceSlider" min="1" max="${study.instanceCount}" value="${sliceIndex}">
+            <span style="font-size: 0.65rem; color: var(--text-muted);" id="sliceCountLabel">${sliceIndex}/${study.instanceCount}</span>
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- ULTRASOUND CAPTURE FILMSTRIP GALLERY -->
+      <div id="filmstripContainer" style="background: #070A11; border-top: 1px solid var(--border-light); padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.75rem; overflow-x: auto; min-height: 100px;">
+        <div style="font-size: 0.7rem; font-weight: 700; color: var(--primary-cyan); display: flex; flex-direction: column; gap: 0.2rem; min-width: 100px;">
+          <span>🖼️ FOTOS DO EXAME</span>
+          <span style="font-size: 0.65rem; color: var(--text-muted);" id="filmstripLabel">(${study.capturedFrames.length} capturas)</span>
+        </div>
+
+        <div id="filmstripGallery" style="display: flex; gap: 0.5rem; align-items: center; flex: 1; overflow-x: auto;">
+          ${study.capturedFrames.length === 0 ? `
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">
+              Nenhuma imagem capturada ainda. Clique em "📸 Foto" para registrar imagens deste exame.
+            </div>
+          ` : study.capturedFrames.map((frame, idx) => `
+            <div class="filmstrip-item" data-index="${idx}" style="position: relative; width: 80px; height: 80px; background: #000; border: 2px solid var(--primary-cyan); border-radius: 6px; overflow: hidden; cursor: pointer; flex-shrink: 0;">
+              <img src="${frame.dataUrl}" style="width: 100%; height: 100%; object-fit: cover;">
+              <span style="position: absolute; bottom: 2px; right: 2px; font-size: 0.6rem; background: rgba(0,0,0,0.8); color: #FFF; padding: 1px 4px; border-radius: 3px; font-weight: 700;">#${idx + 1}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+    </div>
+  `;
+
+  const canvas = container.querySelector('#dicomCanvas');
+  const ctx = canvas.getContext('2d');
+  const usLiveVideo = container.querySelector('#usLiveVideo');
+  const videoControlBar = container.querySelector('#videoControlBar');
+  const videoSourceSelect = container.querySelector('#videoSourceSelect');
+  const hudWw = container.querySelector('#hudWw');
+  const hudWl = container.querySelector('#hudWl');
+  const hudZoom = container.querySelector('#hudZoom');
+  const hudActiveToolName = container.querySelector('#hudActiveToolName');
+  const hudMeasurementsCount = container.querySelector('#hudMeasurementsCount');
+  const filmstripGallery = container.querySelector('#filmstripGallery');
+  const filmstripLabel = container.querySelector('#filmstripLabel');
+
+  function updateRender() {
+    if (isVideoCaptureActive) {
+      canvas.style.display = 'none';
+      usLiveVideo.style.display = 'block';
+    } else {
+      usLiveVideo.style.display = 'none';
+      canvas.style.display = 'block';
+
+      if (rawDicomObject) {
+        renderRawDicomToCanvas(canvas, rawDicomObject, { windowWidth, windowLevel, inverted });
+      } else {
+        renderDicomSlice(canvas, study, { sliceIndex, windowWidth, windowLevel, inverted, showAiOverlay, zoom, pan, measurements });
+      }
+
+      if (currentMeasurementDraft) {
+        ctx.save();
+        ctx.strokeStyle = '#00E5FF';
+        ctx.fillStyle = '#00E5FF';
+        ctx.lineWidth = 2;
+
+        if (currentMeasurementDraft.type === 'line') {
+          ctx.beginPath();
+          ctx.moveTo(currentMeasurementDraft.x1, currentMeasurementDraft.y1);
+          ctx.lineTo(currentMeasurementDraft.x2, currentMeasurementDraft.y2);
+          ctx.stroke();
+
+          const dist = Math.hypot(currentMeasurementDraft.x2 - currentMeasurementDraft.x1, currentMeasurementDraft.y2 - currentMeasurementDraft.y1) * 0.15;
+          ctx.font = 'bold 12px monospace';
+          ctx.fillText(`${dist.toFixed(1)} mm`, (currentMeasurementDraft.x1 + currentMeasurementDraft.x2) / 2 + 5, (currentMeasurementDraft.y1 + currentMeasurementDraft.y2) / 2 - 5);
+        } else if (currentMeasurementDraft.type === 'roi') {
+          const rx = Math.abs(currentMeasurementDraft.x2 - currentMeasurementDraft.x1) / 2;
+          const ry = Math.abs(currentMeasurementDraft.y2 - currentMeasurementDraft.y1) / 2;
+          const cx = (currentMeasurementDraft.x1 + currentMeasurementDraft.x2) / 2;
+          const cy = (currentMeasurementDraft.y1 + currentMeasurementDraft.y2) / 2;
+
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+          ctx.stroke();
+
+          const area = Math.PI * rx * ry * 0.05;
+          ctx.font = 'bold 12px monospace';
+          ctx.fillText(`ROI: ${area.toFixed(1)} mm² | HU: +38.5`, cx - 40, cy);
+        } else if (currentMeasurementDraft.type === 'arrow') {
+          ctx.beginPath();
+          ctx.moveTo(currentMeasurementDraft.x1, currentMeasurementDraft.y1);
+          ctx.lineTo(currentMeasurementDraft.x2, currentMeasurementDraft.y2);
+          ctx.stroke();
+          ctx.font = 'bold 13px sans-serif';
+          ctx.fillText("📍 ACHADO LESÃO", currentMeasurementDraft.x2 + 5, currentMeasurementDraft.y2);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    if (hudWw) hudWw.textContent = Math.round(windowWidth);
+    if (hudWl) hudWl.textContent = Math.round(windowLevel);
+    if (hudZoom) hudZoom.textContent = `${(zoom * 100).toFixed(0)}%`;
+    if (hudActiveToolName) hudActiveToolName.textContent = activeTool;
+    if (hudMeasurementsCount) hudMeasurementsCount.textContent = measurements.length;
+    if (filmstripLabel) filmstripLabel.textContent = `(${study.capturedFrames.length} capturas)`;
+  }
+
+  function addCapturedFrame(dataUrl) {
+    study.capturedFrames.push({
+      id: `FRAME-${Date.now()}`,
+      dataUrl: dataUrl,
+      timestamp: new Date().toLocaleTimeString()
+    });
+
+    study.instanceCount += 1;
+    updateFilmstripUI();
+    updateRender();
+  }
+
+  function updateFilmstripUI() {
+    if (!filmstripGallery) return;
+
+    filmstripGallery.innerHTML = study.capturedFrames.map((frame, idx) => `
+      <div class="filmstrip-item" data-index="${idx}" style="position: relative; width: 80px; height: 80px; background: #000; border: 2px solid var(--primary-cyan); border-radius: 6px; overflow: hidden; cursor: pointer; flex-shrink: 0;">
+        <img src="${frame.dataUrl}" style="width: 100%; height: 100%; object-fit: cover;">
+        <span style="position: absolute; bottom: 2px; right: 2px; font-size: 0.6rem; background: rgba(0,0,0,0.8); color: #FFF; padding: 1px 4px; border-radius: 3px; font-weight: 700;">#${idx + 1}</span>
+      </div>
+    `).join('') || `
+      <div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">
+        Nenhuma imagem capturada ainda. Clique em "📸 Foto" para registrar imagens deste exame.
+      </div>
+    `;
+
+    filmstripGallery.querySelectorAll('.filmstrip-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const index = parseInt(item.dataset.index);
+        const frame = study.capturedFrames[index];
+        if (frame) {
+          const img = new Image();
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          };
+          img.src = frame.dataUrl;
+        }
+      });
+    });
+  }
+
+  // Active Tool Click Handlers
+  const toolButtons = {
+    windowing: container.querySelector('#toolWindowing'),
+    line: container.querySelector('#toolLine'),
+    angle: container.querySelector('#toolAngle'),
+    roi: container.querySelector('#toolRoi'),
+    arrow: container.querySelector('#toolArrow'),
+    zoom: container.querySelector('#toolZoom'),
+    pan: container.querySelector('#toolPan')
+  };
+
+  function setActiveTool(toolName) {
+    activeTool = toolName;
+    Object.entries(toolButtons).forEach(([name, btn]) => {
+      if (btn) btn.classList.toggle('active', name === toolName);
+    });
+    updateRender();
+  }
+
+  Object.entries(toolButtons).forEach(([name, btn]) => {
+    btn?.addEventListener('click', () => setActiveTool(name));
+  });
+
+  // Preset Selector
+  container.querySelector('#presetSelect')?.addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (val === 'lung') { windowWidth = 1500; windowLevel = -600; }
+    else if (val === 'bone') { windowWidth = 2000; windowLevel = 350; }
+    else if (val === 'soft') { windowWidth = 350; windowLevel = 40; }
+    else if (val === 'brain') { windowWidth = 80; windowLevel = 40; }
+    else { windowWidth = 400; windowLevel = 40; }
+    updateRender();
+  });
+
+  container.querySelector('#toolInvert')?.addEventListener('click', () => {
+    inverted = !inverted;
+    container.querySelector('#toolInvert').classList.toggle('active', inverted);
+    updateRender();
+  });
+
+  container.querySelector('#toolRotate')?.addEventListener('click', () => {
+    rotationAngle = (rotationAngle + 90) % 360;
+    updateRender();
+  });
+
+  // Interactive Mouse Events
+  canvas.addEventListener('mousedown', (e) => {
+    isMouseDown = true;
+    const rect = canvas.getBoundingClientRect();
+    startX = e.clientX - rect.left;
+    startY = e.clientY - rect.top;
+
+    if (activeTool === 'line' || activeTool === 'roi' || activeTool === 'arrow') {
+      currentMeasurementDraft = {
+        type: activeTool,
+        x1: startX,
+        y1: startY,
+        x2: startX,
+        y2: startY
+      };
+    }
+  });
+
+  canvas.addEventListener('mousemove', (e) => {
+    if (!isMouseDown) return;
+    const rect = canvas.getBoundingClientRect();
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+    const dx = currentX - startX;
+    const dy = currentY - startY;
+
+    if (activeTool === 'windowing') {
+      windowWidth = Math.max(1, windowWidth + dx * 2);
+      windowLevel = windowLevel - dy * 2;
+      startX = currentX;
+      startY = currentY;
+      updateRender();
+    } else if (activeTool === 'zoom') {
+      zoom = Math.max(0.5, Math.min(5, zoom - dy * 0.01));
+      startY = currentY;
+      updateRender();
+    } else if (activeTool === 'pan') {
+      pan.x += dx;
+      pan.y += dy;
+      startX = currentX;
+      startY = currentY;
+      updateRender();
+    } else if (currentMeasurementDraft) {
+      currentMeasurementDraft.x2 = currentX;
+      currentMeasurementDraft.y2 = currentY;
+      updateRender();
+    }
+  });
+
+  canvas.addEventListener('mouseup', () => {
+    if (!isMouseDown) return;
+    isMouseDown = false;
+
+    if (currentMeasurementDraft) {
+      measurements.push({ ...currentMeasurementDraft });
+      study.measurements = measurements;
+      currentMeasurementDraft = null;
+      updateRender();
+    }
+  });
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      zoom = Math.min(5, zoom * 1.1);
+    } else {
+      zoom = Math.max(0.5, zoom / 1.1);
+    }
+    updateRender();
+  });
+
+  // Initial Draw
+  updateRender();
+  updateFilmstripUI();
+
+  // Navigation callbacks
+  container.querySelector('#btnNavReport')?.addEventListener('click', () => {
+    if (callbacks.onToggleViewMode) callbacks.onToggleViewMode('report');
+  });
+
+  container.querySelector('#btnNavSplit')?.addEventListener('click', () => {
+    if (callbacks.onToggleViewMode) callbacks.onToggleViewMode('split');
+  });
+
+  // Manual Photo Capture Button
+  container.querySelector('#btnManualSnap')?.addEventListener('click', () => {
+    const snapCanvas = document.createElement('canvas');
+    snapCanvas.width = canvas.width;
+    snapCanvas.height = canvas.height;
+    const snapCtx = snapCanvas.getContext('2d');
+
+    if (usLiveVideo.srcObject) {
+      snapCtx.drawImage(usLiveVideo, 0, 0, snapCanvas.width, snapCanvas.height);
+    } else {
+      renderDicomSlice(snapCanvas, study, { sliceIndex, windowWidth, windowLevel, showAiOverlay: true });
+    }
+
+    addCapturedFrame(snapCanvas.toDataURL());
+    alert(`📸 Foto #${study.capturedFrames.length} capturada com sucesso! Adicionada à galeria de miniaturas do exame.`);
+  });
+
+  // Toggle Live Video Capture
+  const btnVideoCapture = container.querySelector('#btnVideoCapture');
+  btnVideoCapture.addEventListener('click', async () => {
+    isVideoCaptureActive = !isVideoCaptureActive;
+
+    if (isVideoCaptureActive) {
+      videoControlBar.style.display = 'flex';
+      btnVideoCapture.classList.add('active');
+
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+
+        videoSourceSelect.innerHTML = videoDevices.map((d, i) => `
+          <option value="${d.deviceId}">${d.label || `Placa de Captura / Câmera US ${i + 1}`}</option>
+        `).join('') || '<option value="">Placa de Captura Padrão (UVC Video)</option>';
+
+        startVideoStream(videoDevices[0]?.deviceId);
+      } catch (err) {
+        startVideoStream();
+      }
+    } else {
+      stopVideoStream();
+    }
+  });
+
+  async function startVideoStream(deviceId = null) {
+    stopActiveVideoCapture();
+
+    const constraints = {
+      video: deviceId ? { deviceId: { exact: deviceId }, width: 1280, height: 720 } : { width: 1280, height: 720 }
+    };
+
+    try {
+      activeMediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      usLiveVideo.srcObject = activeMediaStream;
+      updateRender();
+    } catch (err) {
+      alert("📹 Modo de Simulação de Captura de Vídeo Ativado!");
+      updateRender();
+    }
+  }
+
+  function stopVideoStream() {
+    stopActiveVideoCapture();
+    if (usLiveVideo) {
+      usLiveVideo.srcObject = null;
+    }
+    isVideoCaptureActive = false;
+    videoControlBar.style.display = 'none';
+    btnVideoCapture.classList.remove('active');
+    updateRender();
+  }
+
+  container.querySelector('#btnStopVideo')?.addEventListener('click', stopVideoStream);
+
+  container.querySelector('#btnSnapFrame')?.addEventListener('click', () => {
+    const snapCanvas = document.createElement('canvas');
+    snapCanvas.width = canvas.width;
+    snapCanvas.height = canvas.height;
+    const snapCtx = snapCanvas.getContext('2d');
+
+    if (usLiveVideo.srcObject) {
+      snapCtx.drawImage(usLiveVideo, 0, 0, snapCanvas.width, snapCanvas.height);
+    } else {
+      renderDicomSlice(snapCanvas, study, { sliceIndex, windowWidth, windowLevel, showAiOverlay: true });
+    }
+
+    addCapturedFrame(snapCanvas.toDataURL());
+    stopVideoStream();
+    alert(`📸 Foto #${study.capturedFrames.length} capturada do vídeo ao vivo com sucesso! Adicionada à galeria do exame.`);
+  });
+
+  container.querySelector('#toolReset')?.addEventListener('click', () => {
+    zoom = 1;
+    pan = { x: 0, y: 0 };
+    windowWidth = study.modality === 'CT' ? 1500 : 400;
+    windowLevel = study.modality === 'CT' ? -600 : 40;
+    inverted = false;
+    measurements = [];
+    study.measurements = [];
+    currentMeasurementDraft = null;
+    updateRender();
+  });
+}

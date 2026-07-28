@@ -1,0 +1,22 @@
+{
+  "name": "nexusrad-pacs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^8.1.1"
+  },
+  "dependencies": {
+    "dicom-parser": "^1.8.21",
+    "express": "^5.2.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "lucide": "^1.27.0",
+    "pg": "^8.22.0"
+  }
+}
