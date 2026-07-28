@@ -1,14 +1,13 @@
 // ==========================================================================
-// NexusRad AI - Enterprise CRUD Management System (No Browser Prompts, Full Custom Modals)
-// Pacientes, Modelos de Laudos, Corpo Médico & Convênios TUSS
+// NexusRad AI - Enterprise CRUD Management System with High-Visibility Icons & Toast Feedback
 // ==========================================================================
 
 import { MOCK_TEMPLATES } from '../data/mockData.js';
-import { formatCPF, validateCPF, calculateAge } from '../utils/cpfValidator.js';
+import { createIcons, Edit, Trash2, X, UserPlus, FileText, CreditCard, User, FolderOpen, Search, CheckCircle2 } from 'lucide';
 
 export function renderCrudManagement(container, state, callbacks) {
   let activeTab = 'patients'; // 'patients' | 'templates' | 'doctors' | 'agreements'
-  let modalState = null; // null | { type: 'add_patient' | 'edit_patient' | 'add_template' | 'edit_template' | 'add_doctor' | 'add_agreement', item?: any, index?: number }
+  let modalState = null;
 
   if (!state.customPatients) {
     state.customPatients = [...state.studies.map(s => ({
@@ -49,6 +48,12 @@ export function renderCrudManagement(container, state, callbacks) {
     ];
   }
 
+  function refreshIcons() {
+    createIcons({
+      icons: { Edit, Trash2, X, UserPlus, FileText, CreditCard, User, FolderOpen, Search, CheckCircle2 }
+    });
+  }
+
   function render() {
     container.innerHTML = `
       <div style="flex: 1; display: flex; flex-direction: column; padding: 1.5rem; overflow-y: auto; gap: 1.25rem; background: var(--bg-dark);">
@@ -61,7 +66,7 @@ export function renderCrudManagement(container, state, callbacks) {
               Central de Cadastros & Gestão CRUD do Sistema
             </h1>
             <p style="color: var(--text-muted); font-size: 0.85rem;">
-              Gerenciamento profissional com formulários modais de Pacientes, Laudos, Corpo Médico e Convênios.
+              Gerenciamento profissional com alertas de confirmação e alta visibilidade para Pacientes, Laudos, Médicos e Convênios.
             </p>
           </div>
         </div>
@@ -69,22 +74,22 @@ export function renderCrudManagement(container, state, callbacks) {
         <!-- Navigation Tabs -->
         <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem; flex-wrap: wrap;">
           <button class="btn-secondary nav-crud-tab ${activeTab === 'patients' ? 'active' : ''}" data-tab="patients" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
-            <i data-lucide="user" style="width: 16px; height: 16px;"></i>
+            <i data-lucide="user" style="width: 16px; height: 16px; color: var(--primary-cyan);"></i>
             <span>👤 Cadastro de Pacientes (${state.customPatients.length})</span>
           </button>
 
           <button class="btn-secondary nav-crud-tab ${activeTab === 'templates' ? 'active' : ''}" data-tab="templates" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
-            <i data-lucide="file-check-2" style="width: 16px; height: 16px;"></i>
+            <i data-lucide="file-text" style="width: 16px; height: 16px; color: var(--primary-cyan);"></i>
             <span>📝 Máscaras de Laudos (${state.customTemplatesList.length})</span>
           </button>
 
           <button class="btn-secondary nav-crud-tab ${activeTab === 'doctors' ? 'active' : ''}" data-tab="doctors" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
-            <i data-lucide="user-plus" style="width: 16px; height: 16px;"></i>
+            <i data-lucide="user-plus" style="width: 16px; height: 16px; color: var(--primary-cyan);"></i>
             <span>👨‍⚕️ Corpo Médico (${state.customDoctors.length})</span>
           </button>
 
           <button class="btn-secondary nav-crud-tab ${activeTab === 'agreements' ? 'active' : ''}" data-tab="agreements" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
-            <i data-lucide="credit-card" style="width: 16px; height: 16px;"></i>
+            <i data-lucide="credit-card" style="width: 16px; height: 16px; color: var(--primary-cyan);"></i>
             <span>💳 Convênios & TUSS (${state.customAgreements.length})</span>
           </button>
         </div>
@@ -110,6 +115,7 @@ export function renderCrudManagement(container, state, callbacks) {
 
     attachTabEvents();
     if (modalState) attachModalEvents();
+    refreshIcons();
   }
 
   function renderActiveTabContent() {
@@ -118,8 +124,8 @@ export function renderCrudManagement(container, state, callbacks) {
         <div class="glass-card" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
           <div style="display: flex; align-items: center; justify-content: space-between;">
             <h3 style="font-size: 1rem; font-weight: 700; color: var(--primary-cyan);">Lista de Pacientes Cadastrados</h3>
-            <button class="btn-primary" id="btnOpenAddPatientModal" style="font-size: 0.8rem;">
-              <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i>
+            <button class="btn-primary" id="btnOpenAddPatientModal" style="font-size: 0.8rem; background: linear-gradient(135deg, #00E5FF 0%, #3B82F6 100%); border: none;">
+              <i data-lucide="user-plus" style="width: 15px; height: 15px;"></i>
               <span>+ Cadastrar Novo Paciente</span>
             </button>
           </div>
@@ -140,17 +146,19 @@ export function renderCrudManagement(container, state, callbacks) {
                 ${state.customPatients.map((p, i) => `
                   <tr>
                     <td><strong>${p.name}</strong></td>
-                    <td><span style="font-family: monospace; color: var(--primary-cyan);">${p.id}</span></td>
+                    <td><span style="font-family: monospace; color: var(--primary-cyan); font-weight: 700;">${p.id}</span></td>
                     <td>${p.age} / ${p.gender}</td>
                     <td>${p.phone}</td>
                     <td><span class="badge-status concluido">${p.agreement}</span></td>
                     <td>
-                      <div class="action-btn-group">
-                        <button class="btn-secondary btn-edit-patient" data-index="${i}" title="Editar Dados">
-                          <i data-lucide="edit" style="width: 14px; height: 14px;"></i>
+                      <div class="action-btn-group" style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button class="btn-secondary btn-edit-patient" data-index="${i}" title="Editar Paciente" style="background: rgba(0,229,255,0.15); border-color: var(--primary-cyan); padding: 6px 10px; display: flex; align-items: center; gap: 4px;">
+                          <i data-lucide="edit" style="width: 15px; height: 15px; color: var(--primary-cyan);"></i>
+                          <span style="font-size: 0.75rem; color: var(--primary-cyan); font-weight: 700;">Editar</span>
                         </button>
-                        <button class="btn-secondary btn-delete-patient" data-index="${i}" title="Excluir Paciente" style="color: #EF4444;">
-                          <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                        <button class="btn-secondary btn-delete-patient" data-index="${i}" data-name="${p.name}" title="Excluir Paciente" style="background: rgba(239,68,68,0.15); border-color: #EF4444; padding: 6px 10px; display: flex; align-items: center; gap: 4px;">
+                          <i data-lucide="trash-2" style="width: 15px; height: 15px; color: #EF4444;"></i>
+                          <span style="font-size: 0.75rem; color: #EF4444; font-weight: 700;">Excluir</span>
                         </button>
                       </div>
                     </td>
@@ -167,7 +175,7 @@ export function renderCrudManagement(container, state, callbacks) {
           <div style="display: flex; align-items: center; justify-content: space-between;">
             <h3 style="font-size: 1rem; font-weight: 700; color: var(--primary-cyan);">Biblioteca de Máscaras e Modelos de Laudo</h3>
             <button class="btn-primary" id="btnOpenAddTemplateModal" style="font-size: 0.8rem;">
-              <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
+              <i data-lucide="file-text" style="width: 15px; height: 15px;"></i>
               <span>+ Criar Novo Modelo de Laudo</span>
             </button>
           </div>
@@ -191,12 +199,14 @@ export function renderCrudManagement(container, state, callbacks) {
                     <td><span class="badge-modality ${t.modality}">${t.modality}</span></td>
                     <td><div style="font-size: 0.75rem; color: var(--text-muted); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${t.impression}</div></td>
                     <td>
-                      <div class="action-btn-group">
-                        <button class="btn-secondary btn-edit-template" data-index="${i}" title="Editar Modelo">
-                          <i data-lucide="edit" style="width: 14px; height: 14px;"></i>
+                      <div class="action-btn-group" style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button class="btn-secondary btn-edit-template" data-index="${i}" title="Editar Modelo" style="background: rgba(0,229,255,0.15); border-color: var(--primary-cyan); padding: 6px 10px; display: flex; align-items: center; gap: 4px;">
+                          <i data-lucide="edit" style="width: 15px; height: 15px; color: var(--primary-cyan);"></i>
+                          <span style="font-size: 0.75rem; color: var(--primary-cyan); font-weight: 700;">Editar</span>
                         </button>
-                        <button class="btn-secondary btn-delete-template" data-index="${i}" title="Excluir Modelo" style="color: #EF4444;">
-                          <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                        <button class="btn-secondary btn-delete-template" data-index="${i}" data-name="${t.name}" title="Excluir Modelo" style="background: rgba(239,68,68,0.15); border-color: #EF4444; padding: 6px 10px; display: flex; align-items: center; gap: 4px;">
+                          <i data-lucide="trash-2" style="width: 15px; height: 15px; color: #EF4444;"></i>
+                          <span style="font-size: 0.75rem; color: #EF4444; font-weight: 700;">Excluir</span>
                         </button>
                       </div>
                     </td>
@@ -213,7 +223,7 @@ export function renderCrudManagement(container, state, callbacks) {
           <div style="display: flex; align-items: center; justify-content: space-between;">
             <h3 style="font-size: 1rem; font-weight: 700; color: var(--primary-cyan);">Corpo Médico Radiologista & Laudadores</h3>
             <button class="btn-primary" id="btnOpenAddDoctorModal" style="font-size: 0.8rem;">
-              <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i>
+              <i data-lucide="user-plus" style="width: 15px; height: 15px;"></i>
               <span>+ Cadastrar Médico</span>
             </button>
           </div>
@@ -232,14 +242,15 @@ export function renderCrudManagement(container, state, callbacks) {
               <tbody>
                 ${state.customDoctors.map((d, i) => `
                   <tr>
-                    <td><span style="font-family: monospace; color: var(--primary-cyan);">${d.id}</span></td>
+                    <td><span style="font-family: monospace; color: var(--primary-cyan); font-weight: 700;">${d.id}</span></td>
                     <td><strong>${d.name}</strong></td>
                     <td>${d.crm}</td>
                     <td>${d.specialty}</td>
                     <td>
                       <div class="action-btn-group">
-                        <button class="btn-secondary btn-delete-doctor" data-index="${i}" title="Remover Médico" style="color: #EF4444;">
-                          <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                        <button class="btn-secondary btn-delete-doctor" data-index="${i}" data-name="${d.name}" title="Remover Médico" style="background: rgba(239,68,68,0.15); border-color: #EF4444; padding: 6px 10px; display: flex; align-items: center; gap: 4px;">
+                          <i data-lucide="trash-2" style="width: 15px; height: 15px; color: #EF4444;"></i>
+                          <span style="font-size: 0.75rem; color: #EF4444; font-weight: 700;">Excluir</span>
                         </button>
                       </div>
                     </td>
@@ -256,7 +267,7 @@ export function renderCrudManagement(container, state, callbacks) {
           <div style="display: flex; align-items: center; justify-content: space-between;">
             <h3 style="font-size: 1rem; font-weight: 700; color: var(--primary-cyan);">Tabela de Convênios & TUSS</h3>
             <button class="btn-primary" id="btnOpenAddAgreementModal" style="font-size: 0.8rem;">
-              <i data-lucide="credit-card" style="width: 14px; height: 14px;"></i>
+              <i data-lucide="credit-card" style="width: 15px; height: 15px;"></i>
               <span>+ Cadastrar Convênio / TUSS</span>
             </button>
           </div>
@@ -276,15 +287,16 @@ export function renderCrudManagement(container, state, callbacks) {
               <tbody>
                 ${state.customAgreements.map((c, i) => `
                   <tr>
-                    <td><span style="font-family: monospace; color: var(--primary-cyan);">${c.id}</span></td>
+                    <td><span style="font-family: monospace; color: var(--primary-cyan); font-weight: 700;">${c.id}</span></td>
                     <td><strong>${c.name}</strong></td>
                     <td>${c.codeTuss}</td>
                     <td><strong style="color: var(--status-ready);">${c.price}</strong></td>
                     <td><span class="badge-status concluido">${c.status}</span></td>
                     <td>
                       <div class="action-btn-group">
-                        <button class="btn-secondary btn-delete-agreement" data-index="${i}" title="Remover Convênio" style="color: #EF4444;">
-                          <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                        <button class="btn-secondary btn-delete-agreement" data-index="${i}" data-name="${c.name}" title="Remover Convênio" style="background: rgba(239,68,68,0.15); border-color: #EF4444; padding: 6px 10px; display: flex; align-items: center; gap: 4px;">
+                          <i data-lucide="trash-2" style="width: 15px; height: 15px; color: #EF4444;"></i>
+                          <span style="font-size: 0.75rem; color: #EF4444; font-weight: 700;">Excluir</span>
                         </button>
                       </div>
                     </td>
@@ -308,9 +320,9 @@ export function renderCrudManagement(container, state, callbacks) {
           <div class="modal-card" style="max-width: 550px; width: 90%; display: flex; flex-direction: column; gap: 1rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
               <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--primary-cyan);">
-                ${isEdit ? 'Editar Paciente' : 'Cadastrar Novo Paciente'}
+                ${isEdit ? 'Editar Dados do Paciente' : 'Cadastrar Novo Paciente'}
               </h3>
-              <button class="btn-icon" id="btnCloseCrudModal" style="width: 26px; height: 26px;"><i data-lucide="x"></i></button>
+              <button class="btn-icon" id="btnCloseCrudModal" style="width: 32px; height: 32px; background: rgba(255,255,255,0.1); border-color: var(--border-light);"><i data-lucide="x" style="width: 18px; height: 18px; color: #FFF;"></i></button>
             </div>
 
             <div class="form-group">
@@ -321,7 +333,7 @@ export function renderCrudManagement(container, state, callbacks) {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
               <div class="form-group">
                 <label>CPF do Paciente:</label>
-                <input type="text" id="mPatientCpf" class="form-select" value="${item.cpf || '123.456.789-00'}" placeholder="000.000.000-00">
+                <input type="text" id="mPatientCpf" class="form-select" value="${item.id ? item.id.replace('CPF: ', '') : '123.456.789-00'}" placeholder="000.000.000-00">
               </div>
 
               <div class="form-group">
@@ -358,7 +370,7 @@ export function renderCrudManagement(container, state, callbacks) {
 
             <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
               <button class="btn-secondary" id="btnCancelCrudModal">Cancelar</button>
-              <button class="btn-primary" id="btnSavePatientModal">Salvar Paciente</button>
+              <button class="btn-primary" id="btnSavePatientModal" style="background: var(--status-ready); border-color: var(--status-ready); font-weight: 700;">Salvar Paciente</button>
             </div>
           </div>
         </div>
@@ -371,7 +383,7 @@ export function renderCrudManagement(container, state, callbacks) {
           <div class="modal-card" style="max-width: 600px; width: 90%; display: flex; flex-direction: column; gap: 1rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
               <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--primary-cyan);">Cadastrar / Editar Máscara de Laudo</h3>
-              <button class="btn-icon" id="btnCloseCrudModal" style="width: 26px; height: 26px;"><i data-lucide="x"></i></button>
+              <button class="btn-icon" id="btnCloseCrudModal" style="width: 32px; height: 32px; background: rgba(255,255,255,0.1); border-color: var(--border-light);"><i data-lucide="x" style="width: 18px; height: 18px; color: #FFF;"></i></button>
             </div>
 
             <div class="form-group">
@@ -409,7 +421,7 @@ export function renderCrudManagement(container, state, callbacks) {
 
             <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
               <button class="btn-secondary" id="btnCancelCrudModal">Cancelar</button>
-              <button class="btn-primary" id="btnSaveTemplateModal">Salvar Máscara de Laudo</button>
+              <button class="btn-primary" id="btnSaveTemplateModal" style="background: var(--status-ready); border-color: var(--status-ready); font-weight: 700;">Salvar Máscara de Laudo</button>
             </div>
           </div>
         </div>
@@ -420,7 +432,7 @@ export function renderCrudManagement(container, state, callbacks) {
           <div class="modal-card" style="max-width: 500px; width: 90%; display: flex; flex-direction: column; gap: 1rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
               <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--primary-cyan);">Cadastrar Médico Radiologista</h3>
-              <button class="btn-icon" id="btnCloseCrudModal" style="width: 26px; height: 26px;"><i data-lucide="x"></i></button>
+              <button class="btn-icon" id="btnCloseCrudModal" style="width: 32px; height: 32px; background: rgba(255,255,255,0.1); border-color: var(--border-light);"><i data-lucide="x" style="width: 18px; height: 18px; color: #FFF;"></i></button>
             </div>
 
             <div class="form-group">
@@ -442,7 +454,7 @@ export function renderCrudManagement(container, state, callbacks) {
 
             <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
               <button class="btn-secondary" id="btnCancelCrudModal">Cancelar</button>
-              <button class="btn-primary" id="btnSaveDoctorModal">Salvar Médico</button>
+              <button class="btn-primary" id="btnSaveDoctorModal" style="background: var(--status-ready); border-color: var(--status-ready); font-weight: 700;">Salvar Médico</button>
             </div>
           </div>
         </div>
@@ -453,7 +465,7 @@ export function renderCrudManagement(container, state, callbacks) {
           <div class="modal-card" style="max-width: 500px; width: 90%; display: flex; flex-direction: column; gap: 1rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
               <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--primary-cyan);">Cadastrar Convênio / Tabela TUSS</h3>
-              <button class="btn-icon" id="btnCloseCrudModal" style="width: 26px; height: 26px;"><i data-lucide="x"></i></button>
+              <button class="btn-icon" id="btnCloseCrudModal" style="width: 32px; height: 32px; background: rgba(255,255,255,0.1); border-color: var(--border-light);"><i data-lucide="x" style="width: 18px; height: 18px; color: #FFF;"></i></button>
             </div>
 
             <div class="form-group">
@@ -475,7 +487,7 @@ export function renderCrudManagement(container, state, callbacks) {
 
             <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
               <button class="btn-secondary" id="btnCancelCrudModal">Cancelar</button>
-              <button class="btn-primary" id="btnSaveAgreementModal">Salvar Convênio</button>
+              <button class="btn-primary" id="btnSaveAgreementModal" style="background: var(--status-ready); border-color: var(--status-ready); font-weight: 700;">Salvar Convênio</button>
             </div>
           </div>
         </div>
@@ -501,8 +513,12 @@ export function renderCrudManagement(container, state, callbacks) {
     container.querySelectorAll('.btn-delete-patient').forEach(btn => {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index);
-        state.customPatients.splice(idx, 1);
-        render();
+        const name = btn.dataset.name;
+        if (confirm(`⚠️ CONFIRMAÇÃO DE EXCLUSÃO:\n\nTem certeza que deseja excluir o cadastro do paciente "${name}" do banco de dados?`)) {
+          state.customPatients.splice(idx, 1);
+          render();
+          alert(`✅ O cadastro do paciente "${name}" foi excluído com sucesso!`);
+        }
       });
     });
 
@@ -523,8 +539,12 @@ export function renderCrudManagement(container, state, callbacks) {
     container.querySelectorAll('.btn-delete-template').forEach(btn => {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index);
-        state.customTemplatesList.splice(idx, 1);
-        render();
+        const name = btn.dataset.name;
+        if (confirm(`⚠️ CONFIRMAÇÃO DE EXCLUSÃO:\n\nTem certeza que deseja excluir a máscara de laudo "${name}"?`)) {
+          state.customTemplatesList.splice(idx, 1);
+          render();
+          alert(`✅ A máscara de laudo "${name}" foi excluída com sucesso!`);
+        }
       });
     });
 
@@ -537,8 +557,12 @@ export function renderCrudManagement(container, state, callbacks) {
     container.querySelectorAll('.btn-delete-doctor').forEach(btn => {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index);
-        state.customDoctors.splice(idx, 1);
-        render();
+        const name = btn.dataset.name;
+        if (confirm(`⚠️ CONFIRMAÇÃO DE EXCLUSÃO:\n\nTem certeza que deseja remover o médico "${name}" do corpo clínico?`)) {
+          state.customDoctors.splice(idx, 1);
+          render();
+          alert(`✅ Cadastro do médico "${name}" removido com sucesso!`);
+        }
       });
     });
 
@@ -551,8 +575,12 @@ export function renderCrudManagement(container, state, callbacks) {
     container.querySelectorAll('.btn-delete-agreement').forEach(btn => {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index);
-        state.customAgreements.splice(idx, 1);
-        render();
+        const name = btn.dataset.name;
+        if (confirm(`⚠️ CONFIRMAÇÃO DE EXCLUSÃO:\n\nTem certeza que deseja excluir o convênio "${name}" da tabela TUSS?`)) {
+          state.customAgreements.splice(idx, 1);
+          render();
+          alert(`✅ O convênio "${name}" foi excluído com sucesso!`);
+        }
       });
     });
   }
@@ -586,12 +614,14 @@ export function renderCrudManagement(container, state, callbacks) {
           name: name.toUpperCase(),
           age, gender, phone, agreement
         };
+        alert(`✅ Dados do paciente ${name.toUpperCase()} atualizados com sucesso!`);
       } else {
         state.customPatients.unshift({
           id: `CPF: ${cpf}`,
           name: name.toUpperCase(),
           age, gender, phone, agreement
         });
+        alert(`✅ Paciente ${name.toUpperCase()} cadastrado no banco de dados com sucesso!`);
       }
 
       closeModal();
@@ -617,9 +647,11 @@ export function renderCrudManagement(container, state, callbacks) {
 
       if (modalState.type === 'edit_template' && modalState.index !== undefined) {
         state.customTemplatesList[modalState.index] = newTpl;
+        alert(`✅ Máscara de laudo "${name}" atualizada com sucesso!`);
       } else {
         state.customTemplatesList.unshift(newTpl);
         MOCK_TEMPLATES[newTpl.key] = newTpl;
+        alert(`✅ Nova máscara de laudo "${name}" cadastrada com sucesso!`);
       }
 
       closeModal();
@@ -633,13 +665,15 @@ export function renderCrudManagement(container, state, callbacks) {
         return;
       }
 
-      state.customDoctors.push({
+      const doc = {
         id: `MED-${state.customDoctors.length + 1}`,
         name,
         crm: container.querySelector('#mDoctorCrm').value || 'CRM/SP 000.000',
         specialty: container.querySelector('#mDoctorSpecialty').value
-      });
+      };
 
+      state.customDoctors.push(doc);
+      alert(`✅ Médico ${name} cadastrado no corpo clínico com sucesso!`);
       closeModal();
     });
 
@@ -659,6 +693,7 @@ export function renderCrudManagement(container, state, callbacks) {
         status: 'ATIVO'
       });
 
+      alert(`✅ Convênio ${name} cadastrado na tabela TUSS com sucesso!`);
       closeModal();
     });
   }
