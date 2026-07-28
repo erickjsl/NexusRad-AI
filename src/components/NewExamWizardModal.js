@@ -6,6 +6,7 @@
 import { createIcons, X, User, Calendar, ShieldCheck, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide';
 import { formatCPF, validateCPF, calculateAge } from '../utils/cpfValidator.js';
 import { showToast } from '../utils/toast.js';
+import { saveStudiesToStorage, savePatientsToStorage } from '../utils/storage.js';
 
 export function renderNewExamWizardModal(container, state, callbacks) {
   let step = 1;
@@ -366,17 +367,21 @@ export function renderNewExamWizardModal(container, state, callbacks) {
 
         if (state.studies) {
           state.studies.unshift(newStudy);
+          saveStudiesToStorage(state.studies);
         }
 
-        if (state.customPatients && !state.customPatients.find(p => p.name === newStudy.patientName)) {
-          state.customPatients.unshift({
-            id: newStudy.patientId,
-            name: newStudy.patientName,
-            age: newStudy.age,
-            gender: newStudy.gender,
-            phone: form.phone || "(11) 99888-7766",
-            agreement: agreement
-          });
+        if (state.customPatients) {
+          if (!state.customPatients.find(p => p.name === newStudy.patientName)) {
+            state.customPatients.unshift({
+              id: newStudy.patientId,
+              name: newStudy.patientName,
+              age: newStudy.age,
+              gender: newStudy.gender,
+              phone: form.phone || "(11) 99888-7766",
+              agreement: agreement
+            });
+          }
+          savePatientsToStorage(state.customPatients);
         }
 
         showToast(`Exame de ${newStudy.patientName} gerado com sucesso!`, "success");

@@ -6,6 +6,7 @@
 import { MOCK_TEMPLATES } from '../data/mockData.js';
 import { createIcons, Edit, Trash2, X, UserPlus, FileText, CreditCard, User, FolderOpen, Search, CheckCircle2 } from 'lucide';
 import { showToast, showConfirmDialog } from '../utils/toast.js';
+import { savePatientsToStorage, saveTemplatesToStorage, saveDoctorsToStorage, saveAgreementsToStorage } from '../utils/storage.js';
 
 export function renderCrudManagement(container, state, callbacks) {
   let activeTab = 'patients'; // 'patients' | 'templates' | 'doctors' | 'agreements'
@@ -521,6 +522,7 @@ export function renderCrudManagement(container, state, callbacks) {
           `Tem certeza que deseja excluir permanentemente o cadastro do paciente <strong>${name}</strong>?`,
           () => {
             state.customPatients.splice(idx, 1);
+            savePatientsToStorage(state.customPatients);
             render();
             showToast(`O cadastro do paciente "${name}" foi excluído com sucesso.`, 'success');
           }
@@ -551,6 +553,7 @@ export function renderCrudManagement(container, state, callbacks) {
           `Tem certeza que deseja excluir a máscara de laudo <strong>"${name}"</strong>?`,
           () => {
             state.customTemplatesList.splice(idx, 1);
+            saveTemplatesToStorage(state.customTemplatesList);
             render();
             showToast(`Máscara de laudo "${name}" excluída.`, 'success');
           }
@@ -573,6 +576,7 @@ export function renderCrudManagement(container, state, callbacks) {
           `Tem certeza que deseja remover o médico <strong>"${name}"</strong> do corpo clínico?`,
           () => {
             state.customDoctors.splice(idx, 1);
+            saveDoctorsToStorage(state.customDoctors);
             render();
             showToast(`Médico "${name}" removido com sucesso.`, 'success');
           }
@@ -595,6 +599,7 @@ export function renderCrudManagement(container, state, callbacks) {
           `Tem certeza que deseja excluir o convênio <strong>"${name}"</strong> da tabela TUSS?`,
           () => {
             state.customAgreements.splice(idx, 1);
+            saveAgreementsToStorage(state.customAgreements);
             render();
             showToast(`Convênio "${name}" excluído.`, 'success');
           }
@@ -642,6 +647,7 @@ export function renderCrudManagement(container, state, callbacks) {
         showToast(`Paciente ${name.toUpperCase()} cadastrado com sucesso!`, "success");
       }
 
+      savePatientsToStorage(state.customPatients);
       closeModal();
     });
 
@@ -672,6 +678,7 @@ export function renderCrudManagement(container, state, callbacks) {
         showToast(`Máscara "${name}" criada com sucesso!`, "success");
       }
 
+      saveTemplatesToStorage(state.customTemplatesList);
       closeModal();
     });
 
@@ -691,6 +698,7 @@ export function renderCrudManagement(container, state, callbacks) {
       };
 
       state.customDoctors.push(doc);
+      saveDoctorsToStorage(state.customDoctors);
       showToast(`Médico ${name} cadastrado no corpo clínico!`, "success");
       closeModal();
     });
@@ -711,6 +719,7 @@ export function renderCrudManagement(container, state, callbacks) {
         status: 'ATIVO'
       });
 
+      saveAgreementsToStorage(state.customAgreements);
       showToast(`Convênio ${name} cadastrado na tabela TUSS!`, "success");
       closeModal();
     });

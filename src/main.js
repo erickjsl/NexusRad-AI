@@ -1,6 +1,7 @@
 // ==========================================================================
 // NexusRad AI - Complete Diagnostic Clinic System (Standard Brazilian PACS/RIS Menus)
 // Benchmark: Pixeon NetPACS, Animati PACS, Carestream Vue, Soul MV RIS
+// Persistent LocalStorage Storage Engine Integrated
 // ==========================================================================
 
 import './style.css';
@@ -19,17 +20,18 @@ import { renderPatientPortalPage } from './components/PatientPortalPage.js';
 import { renderCrudManagement } from './components/CrudManagement.js';
 import { renderMedicalRecordPage } from './components/MedicalRecordPage.js';
 import { renderDashboard } from './components/Dashboard.js';
+import { loadPersistentState, saveStudiesToStorage } from './utils/storage.js';
 
 // State
 const state = {
   currentUser: DEMO_USERS[0],
   isAuthenticated: true,
   headerCollapsed: false,
-  studies: [...MOCK_WORKLIST],
-  filteredStudies: [...MOCK_WORKLIST],
+  studies: [],
+  filteredStudies: [],
   activeModality: 'TODOS',
   searchTerm: '',
-  currentView: 'worklist', // 'dashboard' | 'worklist' | 'appointments' | 'viewer' | 'report' | 'split' | 'record' | 'portal' | 'crud' | 'billing' | 'settings'
+  currentView: 'worklist',
   selectedStudyId: null,
   viewerState: {
     sliceIndex: 1,
@@ -44,8 +46,10 @@ const state = {
   }
 };
 
-// Initialize App
+// Initialize App & Load Persistent Data
 function init() {
+  loadPersistentState(state);
+
   const hash = window.location.hash;
   if (hash.startsWith('#/portal/')) {
     const studyId = hash.replace('#/portal/', '');
@@ -119,6 +123,7 @@ function init() {
     onOpenUpload: openUploadModal,
     onWizardComplete: (newStudy) => {
       state.selectedStudyId = newStudy.id;
+      saveStudiesToStorage(state.studies);
       applyFilters();
       switchView('worklist');
     },
@@ -134,6 +139,7 @@ function init() {
         onOpenUpload: openUploadModal,
         onWizardComplete: (newStudy) => {
           state.selectedStudyId = newStudy.id;
+          saveStudiesToStorage(state.studies);
           applyFilters();
           switchView('worklist');
         },
@@ -251,6 +257,7 @@ function handleSelectModality(modality) {
     onOpenUpload: openUploadModal,
     onWizardComplete: (newStudy) => {
       state.selectedStudyId = newStudy.id;
+      saveStudiesToStorage(state.studies);
       applyFilters();
       switchView('worklist');
     },
@@ -339,7 +346,10 @@ function renderWorkspace() {
       onSelectPatient: (id) => {
         state.selectedStudyId = id;
       },
-      onReportSigned: () => switchView('worklist'),
+      onReportSigned: () => {
+        saveStudiesToStorage(state.studies);
+        switchView('worklist');
+      },
       onToggleViewMode: (mode) => switchView(mode)
     });
   } else if (state.currentView === 'split') {
@@ -358,7 +368,10 @@ function renderWorkspace() {
         state.selectedStudyId = id;
         renderWorkspace();
       },
-      onReportSigned: () => switchView('worklist'),
+      onReportSigned: () => {
+        saveStudiesToStorage(state.studies);
+        switchView('worklist');
+      },
       onToggleViewMode: (mode) => switchView(mode)
     });
   }
@@ -403,6 +416,7 @@ function handleNewUpload(fileName, rawDicomObject = null) {
 
   state.studies.unshift(newStudy);
   state.selectedStudyId = newStudy.id;
+  saveStudiesToStorage(state.studies);
   applyFilters();
   switchView('worklist');
 }

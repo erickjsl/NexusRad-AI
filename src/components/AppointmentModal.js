@@ -5,6 +5,7 @@
 
 import { showToast } from '../utils/toast.js';
 import { createIcons, X } from 'lucide';
+import { saveStudiesToStorage } from '../utils/storage.js';
 
 export function renderAppointmentModal(container, state, callbacks) {
   let form = {
@@ -173,6 +174,7 @@ export function renderAppointmentModal(container, state, callbacks) {
 
       if (state.studies) {
         state.studies.unshift(newStudy);
+        saveStudiesToStorage(state.studies);
       }
 
       showToast(`Agendamento de ${name.toUpperCase()} realizado com sucesso!`, "success");
