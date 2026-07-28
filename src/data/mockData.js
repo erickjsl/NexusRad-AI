@@ -371,5 +371,78 @@ ACHADOS:
 - RIM DIREITO: Dimensões preservadas. Observa-se imagem hiperrecogênica com sombra acústica posterior no grupo calicial médio, medindo 6,5 mm. Ausência de ectasia pielocalicial.
 - RIM ESQUERDO: Aspecto ultrassonográfico normal.`,
     impression: "Nefrolitíase à direita (cálculo renal não obstrutivo no grupo calicial médio)."
+  },
+
+  // PRE-LAUDOS AVANÇADOS PESQUISADOS (PADRÃO CBR / ACR / FMF)
+  "US_OBSTETRICO_MORFOLOGICO_1TRI": {
+    name: "Ultrassom Obstétrico Morfológico 1º Trimestre (TN / FMF)",
+    modality: "US",
+    category: "Ginecologia e Obstetrícia",
+    findings: `TÉCNICA:
+Exame realizado por via transabdominal/transvaginal conforme diretrizes da Fetal Medicine Foundation (FMF).
+
+ACHADOS:
+- VITALIDADE: Feto único, ativo. Batimentos Cardíacos Fetais (BCF): 158 bpm, ritmo regular.
+- BIOMETRIA: Comprimento Cabeça-Nádega (CCN): 62,0 mm (compatível com 12 semanas e 4 dias).
+- TRANSLUCÊNCIA NUCAL (TN): 1,4 mm (Normal para o CCN).
+- OSSO NASAL: Presente e bem ossificado.
+- DUCTO VENOSO: Onda A positiva, com índice de pulsatilidade normal (IP: 0,82).
+- REFLUXO TRICÚSPIDE: Ausente.
+- ANATOMIA PRECOCE: Polo cefálico de contornos regulares, plexos coroides simétricos, parede abdominal anterior íntegra com inserção umbilical normal, quatro membros visualizados.`,
+    impression: "Gestação única ativa de 12 semanas e 4 dias. Marcadores ultrassonográficos de aneuploidias (TN, Osso Nasal, Ducto Venoso) dentro da faixa de baixo risco."
+  },
+  "US_MAPEAMENTO_ENDOMETRIOSE": {
+    name: "Ultrassom Mapeamento de Endometriose Profunda",
+    modality: "US",
+    category: "Ginecologia e Obstetrícia",
+    findings: `TÉCNICA:
+Exame transvaginal com preparo intestinal prévio e transdutor de alta frequência.
+
+ACHADOS:
+- ÚTERO: Em anteversoflexão, miométrio heterogêneo no parede posterior com áreas císticas miometriais (Sinais de Adenomiose).
+- OVÁRIO DIREITO: Fixo à parede uterina posterior. Identificada lesão cística de conteúdo ecogênico homogêneo (Endometrioma) medindo 2,4 x 2,1 cm.
+- COMPARTIMENTO ANTERIOR (Bexiga/Ureteres): Sem focos de endometriose.
+- COMPARTIMENTO POSTERIOR: Espessamento hipoecóico nodular no ligamento uterossacro esquerdo medindo 1,2 cm. Sinal do Deslizamento (Sliding Sign) negativo no fundo de saco posterior, sugerindo aderências.`,
+    impression: "Sinais ultrassonográficos de Endometriose Profunda envolvendo ligamento uterossacro esquerdo, endometrioma no ovário direito e aderências pélvicas."
+  },
+  "US_DOPPLER_ARTERIAL_MMII": {
+    name: "Ultrassom Doppler Arterial de Membros Inferiores",
+    modality: "US",
+    category: "Vascular e Doppler",
+    findings: `TÉCNICA:
+Mapeamento arterial colorido e espectral das artérias femorais, poplíteas e infrapatelares.
+
+ACHADOS:
+- ARTÉRIAS FEMORAL COMUM, SUPERFICIAL E POPLÍTEA: Calibre preservado, paredes com espessamento médio-intimal discreto, sem placas ateroscleróticas obstrutivas.
+- ANÁLISE ESPECTRAL: Fluxo trifásico fisiológico, com amostragem de velocidades sistólicas preservadas (VPS Femoral Comum: 95 cm/s).
+- ARTÉRIAS TIBIAL ANTERIOR, POSTERIOR E FIBULAR: Pérvias, com sinal Doppler mantido até a artéria pediosa.`,
+    impression: "Mapeamento Doppler arterial de membros inferiores sem estenoses hemodinamicamente significativas."
+  },
+  "US_HERNIA_INGUINAL": {
+    name: "Ultrassom de Parede Abdominal e Canal Inguinal (Hérnia)",
+    modality: "US",
+    category: "Abdômen e Pelve",
+    findings: `TÉCNICA:
+Exame em repouso e sob manobra de estresse dinâmico (Valsalva).
+
+ACHADOS:
+- REGIÃO INGUINAL DIREITA: Observa-se falha aponeurótica no anel inguinal profundo medindo 1,1 cm, por onde se projeta conteúdo de gordura omental sob manobra de Valsalva, redutível à descompressão.
+- REGIÃO INGUINAL ESQUERDA: Sem evidências de herniações.
+- PAREDE ABDOMINAL ANTERIOR: Linha alba e regiões umbilicais sem defeitos musculares.`,
+    impression: "Hérnia Inguinal Indireta à direita, redutível sob manobras dinâmicas."
+  },
+  "US_PROSTATA_TRANSRETAL": {
+    name: "Ultrassom de Próstata Transretal com Biópsia",
+    modality: "US",
+    category: "Abdômen e Pelve",
+    findings: `TÉCNICA:
+Exame endocavitário transretal com transdutor biplanar acoplado a guia de biópsia.
+
+ACHADOS:
+- PRÓSTATA: Dimensões aumentadas. Medidas: 4,8 x 4,4 x 4,2 cm (Volume: 46,2 cm³).
+- ZONA PERIFÉRICA: Identificada imagem nodular hipoecóica na zona periférica do terço médio do lobo esquerdo, medindo 1,1 x 0,9 cm, apresentando hiperfluxo vascular ao Doppler colorido.
+- ZONA DE TRANSIÇÃO: Alterações nodulares compatíveis com adenomiomatose.
+- VESÍCULAS SEMINAIS: Simétricas, de contornos preservados.`,
+    impression: "Nódulo hipoecóico vascularizado na zona periférica esquerda da próstata (Área alvo recomendada para correlação anátomo-patológica / Biópsia)."
   }
 };

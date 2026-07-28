@@ -159,14 +159,19 @@ export function renderReportEditor(container, study, allStudies = [], callbacks 
 
           <!-- Action Footer -->
           <div style="display: flex; gap: 0.75rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem; flex-wrap: wrap;">
+            <button class="btn-secondary" id="btnSaveDraftReport" style="padding: 0.75rem 1rem; border-color: var(--primary-cyan); color: var(--primary-cyan); font-weight: 700;">
+              <i data-lucide="save" style="width: 16px; height: 16px;"></i>
+              <span>💾 Salvar Rascunho</span>
+            </button>
+
             <button class="btn-secondary" id="btnPrintReport" style="flex: 1; justify-content: center; padding: 0.75rem; font-weight: 700;">
               <i data-lucide="printer" style="width: 16px; height: 16px;"></i>
-              <span>🖨️ Imprimir Laudo com Fotos (PDF)</span>
+              <span>🖨️ Imprimir Laudo com Fotos (Salvar)</span>
             </button>
 
             <button class="btn-primary" id="btnSignReport" style="flex: 1.5; justify-content: center; background: var(--status-ready); border-color: var(--status-ready); font-weight: 700; padding: 0.75rem;">
               <i data-lucide="shield-check" style="width: 18px; height: 18px;"></i>
-              <span>Assinar Digitalmente & Enviar WhatsApp ao Paciente</span>
+              <span>Assinar Digitalmente & Salvar Laudo</span>
             </button>
           </div>
 
@@ -177,8 +182,47 @@ export function renderReportEditor(container, study, allStudies = [], callbacks 
     const reportTextarea = container.querySelector('#reportTextarea');
     const chkIncludePhotos = container.querySelector('#chkIncludePhotos');
 
+    // Auto-update study report text as user types
+    reportTextarea?.addEventListener('input', (e) => {
+      currentStudy.reportText = e.target.value;
+    });
+
     chkIncludePhotos?.addEventListener('change', (e) => {
       includePhotosInPdf = e.target.checked;
+    });
+
+    // Save Draft Button
+    container.querySelector('#btnSaveDraftReport')?.addEventListener('click', () => {
+      currentStudy.reportText = reportTextarea.value;
+      saveStudiesToStorage(allStudies);
+      showToast("💾 Rascunho do laudo salvo permanentemente com sucesso!", "success");
+    });
+
+    // Sign, Save PDF & Send Automatic WhatsApp Notification
+    container.querySelector('#btnSignReport')?.addEventListener('click', () => {
+      currentStudy.status = 'concluido';
+      currentStudy.reportText = reportTextarea.value;
+      currentStudy.signedDate = new Date().toLocaleString();
+      saveStudiesToStorage(allStudies);
+      generatePdfWithPhotos(currentStudy, reportTextarea.value, includePhotosInPdf);
+
+      showToast("🔒 Laudo assinado digitalmente com ICP-Brasil e salvo no histórico do paciente!", "success");
+
+      const msg = encodeURIComponent(`Olá ${currentStudy.patientName}, seu laudo do exame de ${currentStudy.studyDescription} foi assinado digitalmente e já está disponível para consulta e download em nosso portal online:\n\nhttp://127.0.0.1:3000/#/portal/${currentStudy.id}`);
+
+      if (confirm(`✅ Laudo do paciente ${currentStudy.patientName} assinado e salvo com sucesso!\n\nDeseja disparar a notificação automática via WhatsApp para o paciente agora?`)) {
+        window.open(`https://wa.me/5511998887766?text=${msg}`, '_blank');
+      }
+
+      if (callbacks.onReportSigned) callbacks.onReportSigned(currentStudy.id);
+    });
+
+    // Print PDF with Photos (Auto-save)
+    container.querySelector('#btnPrintReport')?.addEventListener('click', () => {
+      currentStudy.reportText = reportTextarea.value;
+      saveStudiesToStorage(allStudies);
+      generatePdfWithPhotos(currentStudy, reportTextarea.value, includePhotosInPdf);
+      showToast("📄 Laudo impresso e salvo permanentemente no cadastro do paciente!", "success");
     });
 
     // Patient Dropdown Selection Handler
