@@ -3,7 +3,7 @@
 // Supports Multiple File Selection, Patient Name Association & Single-Study Grouping
 // ==========================================================================
 
-import { parseDicomFile } from '../utils/dicomParser.js';
+import { parseDicomFile, renderRawDicomToCanvas } from '../utils/dicomParser.js';
 import { createIcons } from 'lucide';
 import * as LucideIcons from 'lucide';
 
@@ -247,22 +247,27 @@ export function renderUploadModal(container, callbacks) {
     const description = uStudyDescription.value.trim().toUpperCase() || `EXAME IMPORTADO (${selectedFiles.length} IMAGENS)`;
 
     uploadStatus.style.color = '#10B981';
-    uploadStatus.textContent = `⏳ Criando exame único para ${name} com ${selectedFiles.length} imagens...`;
+    uploadStatus.textContent = `⏳ Processando e convertendo ${selectedFiles.length} imagem(ns) para visualização instantânea...`;
 
-    // Process all files into dataUrls / captured frames
     const capturedFrames = [];
+    const rawDicomObjects = [];
+
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
       try {
-        const dataUrl = await readFileAsDataUrl(file);
+        const result = await processDicomOrImageFile(file);
+        if (result.parsedDicom) {
+          rawDicomObjects.push(result.parsedDicom);
+        }
+
         capturedFrames.push({
           id: `FRAME-${Date.now()}_${i}`,
-          dataUrl: dataUrl,
+          dataUrl: result.dataUrl,
           source: file.name,
           timestamp: new Date().toLocaleTimeString()
         });
       } catch (err) {
-        console.error("Error reading file:", file.name, err);
+        console.error("Error processing file:", file.name, err);
       }
     }
 
@@ -277,7 +282,7 @@ export function renderUploadModal(container, callbacks) {
       date: new Date().toISOString().slice(0, 16).replace('T', ' '),
       modalitiesInStudy: [modality],
       seriesCount: 1,
-      instanceCount: selectedFiles.length,
+      instanceCount: capturedFrames.length || selectedFiles.length,
       status: "pronto",
       urgency: "normal",
       physician: "Dr. Carlos Roberto de Mendonça",
@@ -287,22 +292,53 @@ export function renderUploadModal(container, callbacks) {
       ma: "Auto Gain",
       sliceThickness: "1.0 mm",
       capturedFrames: capturedFrames,
-      rawDicomObject: parsedDicomMetadata,
+      rawDicomObjects: rawDicomObjects,
+      rawDicomObject: rawDicomObjects[0] || parsedDicomMetadata,
       aiFinding: {
         type: "Série DICOM Importada com Sucesso",
         confidence: "99.0%",
         box: { x: 25, y: 25, width: 40, height: 40 },
-        description: `Importação de ${selectedFiles.length} arquivos associada ao paciente ${name}.`
+        description: `Importação de ${capturedFrames.length} arquivos associada ao paciente ${name}.`
       }
     };
 
     setTimeout(() => {
       closeModal();
       if (callbacks.onUploadComplete) callbacks.onUploadComplete(newStudy);
-    }, 600);
+    }, 500);
   });
 
   refreshIcons();
+}
+
+async function processDicomOrImageFile(file) {
+  const fileName = file.name.toLowerCase();
+  const isDicom = fileName.endsWith('.dcm') || fileName.endsWith('.dicom');
+
+  if (isDicom) {
+    try {
+      const buffer = await file.arrayBuffer();
+      const parsed = parseDicomFile(buffer);
+
+      if (parsed && parsed.pixelData) {
+        const offCanvas = document.createElement('canvas');
+        if (renderRawDicomToCanvas(offCanvas, parsed)) {
+          return {
+            dataUrl: offCanvas.toDataURL('image/png'),
+            parsedDicom: parsed
+          };
+        }
+      }
+    } catch (err) {
+      console.warn("Could not convert raw DICOM to PNG, falling back to dataUrl:", file.name, err);
+    }
+  }
+
+  const dataUrl = await readFileAsDataUrl(file);
+  return {
+    dataUrl: dataUrl,
+    parsedDicom: null
+  };
 }
 
 function readFileAsDataUrl(file) {
