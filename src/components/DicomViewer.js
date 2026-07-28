@@ -246,21 +246,31 @@ export function renderDicomViewer(container, study, state, callbacks) {
     if (isVideoCaptureActive) {
       canvas.style.display = 'none';
       usLiveVideo.style.display = 'block';
-    } else {
-      usLiveVideo.style.display = 'none';
-      canvas.style.display = 'block';
+      return;
+    }
 
-      // Check if current slice is a captured frame / imported image
-      let renderedSuccess = false;
+    usLiveVideo.style.display = 'none';
+    canvas.style.display = 'block';
 
-      if (study.capturedFrames && study.capturedFrames.length > 0) {
-        const frameIdx = Math.min(sliceIndex - 1, study.capturedFrames.length - 1);
-        const currentFrame = study.capturedFrames[Math.max(0, frameIdx)];
+    // 1. Always render diagnostic medical slice synchronously first as instant base canvas
+    let dicomRendered = false;
+    if (rawDicomObject && rawDicomObject.pixelData) {
+      dicomRendered = renderRawDicomToCanvas(canvas, rawDicomObject, { windowWidth, windowLevel, inverted });
+    }
 
-        if (currentFrame && currentFrame.dataUrl) {
-          renderedSuccess = true;
-          const img = new Image();
-          img.onload = () => {
+    if (!dicomRendered) {
+      renderDicomSlice(canvas, study, { sliceIndex, windowWidth, windowLevel, inverted, showAiOverlay, zoom, pan, measurements });
+    }
+
+    // 2. If study has captured/imported image frames, overlay valid image frame onto canvas
+    if (study.capturedFrames && study.capturedFrames.length > 0) {
+      const frameIdx = Math.min(sliceIndex - 1, study.capturedFrames.length - 1);
+      const currentFrame = study.capturedFrames[Math.max(0, frameIdx)];
+
+      if (currentFrame && currentFrame.dataUrl && currentFrame.dataUrl.length > 100) {
+        const img = new Image();
+        img.onload = () => {
+          if (img.width > 10 && img.height > 10) {
             canvas.width = 512;
             canvas.height = 512;
             ctx.fillStyle = '#000000';
@@ -278,21 +288,13 @@ export function renderDicomViewer(container, study, state, callbacks) {
             ctx.restore();
 
             drawDraftOverlay();
-          };
-          img.src = currentFrame.dataUrl;
-        }
+          }
+        };
+        img.src = currentFrame.dataUrl;
       }
-
-      if (!renderedSuccess && rawDicomObject && rawDicomObject.pixelData) {
-        renderedSuccess = renderRawDicomToCanvas(canvas, rawDicomObject, { windowWidth, windowLevel, inverted });
-      }
-
-      if (!renderedSuccess) {
-        renderDicomSlice(canvas, study, { sliceIndex, windowWidth, windowLevel, inverted, showAiOverlay, zoom, pan, measurements });
-      }
-
-      drawDraftOverlay();
     }
+
+    drawDraftOverlay();
 
     if (hudWw) hudWw.textContent = Math.round(windowWidth);
     if (hudWl) hudWl.textContent = Math.round(windowLevel);
