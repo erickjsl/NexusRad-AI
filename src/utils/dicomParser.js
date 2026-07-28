@@ -1,6 +1,6 @@
 // ==========================================================================
 // NexusRad AI - Native Binary DICOM (.dcm) Parser & Pixel Renderer
-// Supports Encapsulated JPEG/PNG Embedded Stream Extraction & Dynamic Normalization
+// Strict Transfer Syntax Check (Compressed vs Uncompressed) & Embedded JPEG Extraction
 // ==========================================================================
 
 import dicomParser from 'dicom-parser';
@@ -23,7 +23,9 @@ export function extractEmbeddedDicomImage(byteArray) {
       }
 
       const jpegBytes = byteArray.subarray(i, endIdx);
-      return new Blob([jpegBytes], { type: 'image/jpeg' });
+      if (jpegBytes.length > 1024) {
+        return new Blob([jpegBytes], { type: 'image/jpeg' });
+      }
     }
   }
 
@@ -31,7 +33,9 @@ export function extractEmbeddedDicomImage(byteArray) {
   for (let i = 0; i < byteArray.length - 8; i++) {
     if (byteArray[i] === 0x89 && byteArray[i + 1] === 0x50 && byteArray[i + 2] === 0x4E && byteArray[i + 3] === 0x47) {
       const pngBytes = byteArray.subarray(i);
-      return new Blob([pngBytes], { type: 'image/png' });
+      if (pngBytes.length > 1024) {
+        return new Blob([pngBytes], { type: 'image/png' });
+      }
     }
   }
 
@@ -65,34 +69,46 @@ export function parseDicomFile(arrayBuffer) {
   const rescaleIntercept = parseFloat(dataSet.string('x00281052') || '0');
   const bitsAllocated = dataSet.uint16('x00280100') || 16;
   const pixelRepresentation = dataSet.uint16('x00280103') || 0; // 0 = unsigned, 1 = signed
+  const transferSyntax = dataSet.string('x00020010') || '';
 
-  // Extract Pixel Data safely using DataView to handle odd byte offsets
+  // Check if Transfer Syntax is uncompressed raw linear pixels
+  const isUncompressed = !transferSyntax ||
+    transferSyntax === '1.2.840.10008.1.2' ||
+    transferSyntax === '1.2.840.10008.1.2.1' ||
+    transferSyntax === '1.2.840.10008.1.2.2';
+
+  // Extract Raw Pixel Data ONLY if transfer syntax is uncompressed
   const pixelElement = dataSet.elements.x7fe00010;
   let pixelData = null;
 
-  if (pixelElement && pixelElement.length > 0) {
+  if (isUncompressed && pixelElement && pixelElement.length > 0) {
     try {
       const dataView = new DataView(byteArray.buffer, byteArray.byteOffset + pixelElement.dataOffset, pixelElement.length);
       const numPixels = rows * cols;
-      pixelData = new Int32Array(numPixels);
+      
+      // Verify first bytes are not DICOM sequence item tags (0xFFFE E000)
+      const firstTag = dataView.getUint16(0, true);
+      if (firstTag !== 0xFFFE && firstTag !== 0xFEFF) {
+        pixelData = new Int32Array(numPixels);
 
-      if (bitsAllocated === 8) {
-        for (let i = 0; i < numPixels && i < pixelElement.length; i++) {
-          pixelData[i] = dataView.getUint8(i);
-        }
-      } else {
-        // 16-bit Little Endian (Standard DICOM Explicit VR)
-        const isLittleEndian = true;
-        for (let i = 0; i < numPixels && (i * 2 + 1) < pixelElement.length; i++) {
-          if (pixelRepresentation === 1) {
-            pixelData[i] = dataView.getInt16(i * 2, isLittleEndian);
-          } else {
-            pixelData[i] = dataView.getUint16(i * 2, isLittleEndian);
+        if (bitsAllocated === 8) {
+          for (let i = 0; i < numPixels && i < pixelElement.length; i++) {
+            pixelData[i] = dataView.getUint8(i);
+          }
+        } else {
+          // 16-bit Little Endian (Standard DICOM Explicit VR)
+          const isLittleEndian = true;
+          for (let i = 0; i < numPixels && (i * 2 + 1) < pixelElement.length; i++) {
+            if (pixelRepresentation === 1) {
+              pixelData[i] = dataView.getInt16(i * 2, isLittleEndian);
+            } else {
+              pixelData[i] = dataView.getUint16(i * 2, isLittleEndian);
+            }
           }
         }
       }
     } catch (err) {
-      console.warn("Could not read raw pixel stream directly, fallback to image renderer:", err);
+      console.warn("Could not read raw pixel stream directly:", err);
       pixelData = null;
     }
   }
@@ -108,6 +124,7 @@ export function parseDicomFile(arrayBuffer) {
     windowCenter,
     rescaleSlope,
     rescaleIntercept,
+    transferSyntax,
     pixelData
   };
 }
@@ -120,6 +137,8 @@ export function renderRawDicomToCanvas(canvas, dicomObject, options = {}) {
 
   const ctx = canvas.getContext('2d');
   const { rows, cols, pixelData } = dicomObject;
+
+  if (!rows || !cols || rows < 10 || cols < 10) return false;
 
   canvas.width = cols;
   canvas.height = rows;
@@ -139,7 +158,7 @@ export function renderRawDicomToCanvas(canvas, dicomObject, options = {}) {
     if (val > maxVal) maxVal = val;
   }
 
-  if (maxVal === minVal) maxVal = minVal + 1;
+  if (maxVal === minVal || !isFinite(minVal) || !isFinite(maxVal)) return false;
   const range = maxVal - minVal;
 
   for (let i = 0; i < totalPixels; i++) {
