@@ -1,5 +1,6 @@
 // ==========================================================================
 // NexusRad AI - Native Binary DICOM (.dcm) Parser & Pixel Renderer
+// Correct 8-bit / 16-bit Endian DataView Pixel Extraction & Canvas Scaling
 // ==========================================================================
 
 import dicomParser from 'dicom-parser';
@@ -29,14 +30,38 @@ export function parseDicomFile(arrayBuffer) {
   const windowCenter = parseFloat(dataSet.string('x00281050') || '40');
   const rescaleSlope = parseFloat(dataSet.string('x00281053') || '1');
   const rescaleIntercept = parseFloat(dataSet.string('x00281052') || '0');
+  const bitsAllocated = dataSet.uint16('x00280100') || 16;
+  const pixelRepresentation = dataSet.uint16('x00280103') || 0; // 0 = unsigned, 1 = signed
 
-  // Extract Pixel Data
+  // Extract Pixel Data safely using DataView to handle odd byte offsets
   const pixelElement = dataSet.elements.x7fe00010;
   let pixelData = null;
 
-  if (pixelElement) {
-    const pixelBytes = byteArray.subarray(pixelElement.dataOffset, pixelElement.dataOffset + pixelElement.length);
-    pixelData = new Int16Array(pixelBytes.buffer, pixelBytes.byteOffset, pixelBytes.length / 2);
+  if (pixelElement && pixelElement.length > 0) {
+    try {
+      const dataView = new DataView(byteArray.buffer, byteArray.byteOffset + pixelElement.dataOffset, pixelElement.length);
+      const numPixels = rows * cols;
+      pixelData = new Int32Array(numPixels);
+
+      if (bitsAllocated === 8) {
+        for (let i = 0; i < numPixels && i < pixelElement.length; i++) {
+          pixelData[i] = dataView.getUint8(i);
+        }
+      } else {
+        // 16-bit Little Endian (Standard DICOM Explicit VR)
+        const isLittleEndian = true;
+        for (let i = 0; i < numPixels && (i * 2 + 1) < pixelElement.length; i++) {
+          if (pixelRepresentation === 1) {
+            pixelData[i] = dataView.getInt16(i * 2, isLittleEndian);
+          } else {
+            pixelData[i] = dataView.getUint16(i * 2, isLittleEndian);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Could not read raw pixel stream directly, fallback to image renderer:", err);
+      pixelData = null;
+    }
   }
 
   return {
@@ -69,15 +94,16 @@ export function renderRawDicomToCanvas(canvas, dicomObject, options = {}) {
   const imgData = ctx.createImageData(cols, rows);
   const data = imgData.data;
 
-  const ww = options.windowWidth || windowWidth;
-  const wl = options.windowLevel || windowCenter;
+  const ww = options.windowWidth || windowWidth || 400;
+  const wl = options.windowLevel || windowCenter || 40;
 
   const lowerBound = wl - ww / 2;
   const upperBound = wl + ww / 2;
 
   const totalPixels = rows * cols;
+  if (pixelData.length < totalPixels) return false;
+
   for (let i = 0; i < totalPixels; i++) {
-    // Convert raw pixel value to Hounsfield Units (HU)
     const rawVal = pixelData[i];
     const huVal = rawVal * rescaleSlope + rescaleIntercept;
 

@@ -250,59 +250,98 @@ export function renderDicomViewer(container, study, state, callbacks) {
       usLiveVideo.style.display = 'none';
       canvas.style.display = 'block';
 
-      if (rawDicomObject) {
-        renderRawDicomToCanvas(canvas, rawDicomObject, { windowWidth, windowLevel, inverted });
-      } else {
+      // Check if current slice is a captured frame / imported image
+      let renderedSuccess = false;
+
+      if (study.capturedFrames && study.capturedFrames.length > 0) {
+        const frameIdx = Math.min(sliceIndex - 1, study.capturedFrames.length - 1);
+        const currentFrame = study.capturedFrames[Math.max(0, frameIdx)];
+
+        if (currentFrame && currentFrame.dataUrl) {
+          renderedSuccess = true;
+          const img = new Image();
+          img.onload = () => {
+            canvas.width = 512;
+            canvas.height = 512;
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const scale = Math.min(canvas.width / img.width, canvas.height / img.height) * zoom;
+            const w = img.width * scale;
+            const h = img.height * scale;
+            const x = (canvas.width - w) / 2 + pan.x;
+            const y = (canvas.height - h) / 2 + pan.y;
+
+            ctx.save();
+            if (inverted) ctx.filter = 'invert(100%)';
+            ctx.drawImage(img, x, y, w, h);
+            ctx.restore();
+
+            drawDraftOverlay();
+          };
+          img.src = currentFrame.dataUrl;
+        }
+      }
+
+      if (!renderedSuccess && rawDicomObject && rawDicomObject.pixelData) {
+        renderedSuccess = renderRawDicomToCanvas(canvas, rawDicomObject, { windowWidth, windowLevel, inverted });
+      }
+
+      if (!renderedSuccess) {
         renderDicomSlice(canvas, study, { sliceIndex, windowWidth, windowLevel, inverted, showAiOverlay, zoom, pan, measurements });
       }
 
-      if (currentMeasurementDraft) {
-        ctx.save();
-        ctx.strokeStyle = '#00E5FF';
-        ctx.fillStyle = '#00E5FF';
-        ctx.lineWidth = 2;
-
-        if (currentMeasurementDraft.type === 'line') {
-          ctx.beginPath();
-          ctx.moveTo(currentMeasurementDraft.x1, currentMeasurementDraft.y1);
-          ctx.lineTo(currentMeasurementDraft.x2, currentMeasurementDraft.y2);
-          ctx.stroke();
-
-          const dist = Math.hypot(currentMeasurementDraft.x2 - currentMeasurementDraft.x1, currentMeasurementDraft.y2 - currentMeasurementDraft.y1) * 0.15;
-          ctx.font = 'bold 12px monospace';
-          ctx.fillText(`${dist.toFixed(1)} mm`, (currentMeasurementDraft.x1 + currentMeasurementDraft.x2) / 2 + 5, (currentMeasurementDraft.y1 + currentMeasurementDraft.y2) / 2 - 5);
-        } else if (currentMeasurementDraft.type === 'roi') {
-          const rx = Math.abs(currentMeasurementDraft.x2 - currentMeasurementDraft.x1) / 2;
-          const ry = Math.abs(currentMeasurementDraft.y2 - currentMeasurementDraft.y1) / 2;
-          const cx = (currentMeasurementDraft.x1 + currentMeasurementDraft.x2) / 2;
-          const cy = (currentMeasurementDraft.y1 + currentMeasurementDraft.y2) / 2;
-
-          ctx.beginPath();
-          ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
-          ctx.stroke();
-
-          const area = Math.PI * rx * ry * 0.05;
-          ctx.font = 'bold 12px monospace';
-          ctx.fillText(`ROI: ${area.toFixed(1)} mm² | HU: +38.5`, cx - 40, cy);
-        } else if (currentMeasurementDraft.type === 'arrow') {
-          ctx.beginPath();
-          ctx.moveTo(currentMeasurementDraft.x1, currentMeasurementDraft.y1);
-          ctx.lineTo(currentMeasurementDraft.x2, currentMeasurementDraft.y2);
-          ctx.stroke();
-          ctx.font = 'bold 13px sans-serif';
-          ctx.fillText("📍 ACHADO LESÃO", currentMeasurementDraft.x2 + 5, currentMeasurementDraft.y2);
-        }
-
-        ctx.restore();
-      }
+      drawDraftOverlay();
     }
 
     if (hudWw) hudWw.textContent = Math.round(windowWidth);
     if (hudWl) hudWl.textContent = Math.round(windowLevel);
     if (hudZoom) hudZoom.textContent = `${(zoom * 100).toFixed(0)}%`;
     if (hudActiveToolName) hudActiveToolName.textContent = activeTool;
-    if (hudCapturesCount) hudCapturesCount.textContent = study.capturedFrames.length;
-    if (filmstripLabel) filmstripLabel.textContent = `(${study.capturedFrames.length} salvas)`;
+    if (hudCapturesCount) hudCapturesCount.textContent = study.capturedFrames ? study.capturedFrames.length : 0;
+    if (filmstripLabel) filmstripLabel.textContent = `(${study.capturedFrames ? study.capturedFrames.length : 0} salvas)`;
+  }
+
+  function drawDraftOverlay() {
+    if (currentMeasurementDraft) {
+      ctx.save();
+      ctx.strokeStyle = '#00E5FF';
+      ctx.fillStyle = '#00E5FF';
+      ctx.lineWidth = 2;
+
+      if (currentMeasurementDraft.type === 'line') {
+        ctx.beginPath();
+        ctx.moveTo(currentMeasurementDraft.x1, currentMeasurementDraft.y1);
+        ctx.lineTo(currentMeasurementDraft.x2, currentMeasurementDraft.y2);
+        ctx.stroke();
+
+        const dist = Math.hypot(currentMeasurementDraft.x2 - currentMeasurementDraft.x1, currentMeasurementDraft.y2 - currentMeasurementDraft.y1) * 0.15;
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(`${dist.toFixed(1)} mm`, (currentMeasurementDraft.x1 + currentMeasurementDraft.x2) / 2 + 5, (currentMeasurementDraft.y1 + currentMeasurementDraft.y2) / 2 - 5);
+      } else if (currentMeasurementDraft.type === 'roi') {
+        const rx = Math.abs(currentMeasurementDraft.x2 - currentMeasurementDraft.x1) / 2;
+        const ry = Math.abs(currentMeasurementDraft.y2 - currentMeasurementDraft.y1) / 2;
+        const cx = (currentMeasurementDraft.x1 + currentMeasurementDraft.x2) / 2;
+        const cy = (currentMeasurementDraft.y1 + currentMeasurementDraft.y2) / 2;
+
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+        ctx.stroke();
+
+        const area = Math.PI * rx * ry * 0.05;
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(`ROI: ${area.toFixed(1)} mm² | HU: +38.5`, cx - 40, cy);
+      } else if (currentMeasurementDraft.type === 'arrow') {
+        ctx.beginPath();
+        ctx.moveTo(currentMeasurementDraft.x1, currentMeasurementDraft.y1);
+        ctx.lineTo(currentMeasurementDraft.x2, currentMeasurementDraft.y2);
+        ctx.stroke();
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText("📍 ACHADO LESÃO", currentMeasurementDraft.x2 + 5, currentMeasurementDraft.y2);
+      }
+
+      ctx.restore();
+    }
   }
 
   function addCapturedFrame(dataUrl, sourceName = "DISPOSITIVO EXTERNO") {

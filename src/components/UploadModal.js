@@ -13,11 +13,11 @@ export function renderUploadModal(container, callbacks) {
 
   container.innerHTML = `
     <div class="modal-backdrop" id="modalBackdrop">
-      <div class="modal-card" style="max-width: 650px; width: 90%; max-height: 90vh; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto;">
+      <div class="modal-card" style="max-width: 680px; width: 92%; max-height: 88vh; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; padding: 1.25rem; background: #0F172A; border: 1px solid var(--border-light); border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
         
         <!-- Header -->
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.75rem;">
-          <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--primary-cyan); display: flex; align-items: center; gap: 0.5rem;">
+          <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--primary-cyan); display: flex; align-items: center; gap: 0.5rem; margin: 0;">
             <i data-lucide="upload-cloud"></i>
             Importar Série de Arquivos DICOM / Imagens (.dcm, .jpg, .png)
           </h3>
@@ -28,16 +28,16 @@ export function renderUploadModal(container, callbacks) {
 
         <!-- Step 1: Dropzone -->
         <div id="uploadStep1" style="display: flex; flex-direction: column; gap: 1rem;">
-          <div class="dropzone" id="dropzone" style="border: 2px dashed var(--primary-cyan); border-radius: 12px; padding: 2rem 1.5rem; text-align: center; background: rgba(0, 229, 255, 0.03); cursor: pointer; transition: all 0.2s;">
-            <i data-lucide="folder-open" style="width: 52px; height: 52px; color: var(--primary-cyan); margin-bottom: 0.75rem;"></i>
+          <div class="dropzone" id="dropzone" style="border: 2px dashed var(--primary-cyan); border-radius: 12px; padding: 2.2rem 1.5rem; text-align: center; background: rgba(0, 229, 255, 0.03); cursor: pointer; transition: all 0.2s;">
+            <i data-lucide="folder-open" style="width: 54px; height: 54px; color: var(--primary-cyan); margin-bottom: 0.75rem;"></i>
             <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.35rem; color: #FFF;">
               Arraste & Solte Vários Arquivos (.dcm / Imagens) Aqui
             </h4>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
               Você pode selecionar ou arrastar múltiplos arquivos de uma só vez (ex: 1, 10 ou 50 imagens do mesmo exame).
             </p>
-            <button class="btn-primary" id="selectFileBtn" style="background: linear-gradient(135deg, #00E5FF 0%, #3B82F6 100%); border: none; font-weight: 700; padding: 0.6rem 1.25rem;">
-              <i data-lucide="file-plus" style="width: 16px; height: 16px;"></i>
+            <button class="btn-primary" id="selectFileBtn" style="background: linear-gradient(135deg, #00E5FF 0%, #3B82F6 100%); border: none; font-weight: 700; padding: 0.65rem 1.35rem; border-radius: 8px;">
+              <i data-lucide="file-plus" style="width: 18px; height: 18px;"></i>
               <span>Selecionar Vários Arquivos do Computador</span>
             </button>
             <input type="file" id="fileInput" accept=".dcm, .dicom, image/*" multiple style="display: none;">
@@ -45,46 +45,46 @@ export function renderUploadModal(container, callbacks) {
         </div>
 
         <!-- Step 2: Patient Association & Examination Details (Appears when files are selected) -->
-        <div id="uploadStep2" style="display: none; flex-direction: column; gap: 1rem; background: rgba(15, 23, 42, 0.6); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--border-light);">
+        <div id="uploadStep2" style="display: none; flex-direction: column; gap: 0.85rem; background: rgba(30, 41, 59, 0.7); padding: 1.1rem; border-radius: 10px; border: 1px solid var(--border-light);">
           
-          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); padding-bottom: 0.6rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
             <span style="font-size: 0.85rem; font-weight: 700; color: var(--status-ready); display: flex; align-items: center; gap: 0.4rem;">
               <i data-lucide="check-circle-2" style="width: 16px; height: 16px;"></i>
               <span id="lblFileCount">18 Arquivos Selecionados</span>
             </span>
 
-            <button class="btn-secondary" id="btnResetSelection" style="font-size: 0.72rem; padding: 0.25rem 0.6rem;">
+            <button class="btn-secondary" id="btnResetSelection" style="font-size: 0.75rem; padding: 0.3rem 0.7rem; border-radius: 6px;">
               🔄 Escolher Outros Arquivos
             </button>
           </div>
 
           <!-- Patient Association Dropdown / Input -->
-          <div class="form-group">
-            <label style="font-size: 0.8rem; font-weight: 700; color: var(--primary-cyan);">
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.8rem; font-weight: 700; color: var(--primary-cyan); margin-bottom: 0.25rem; display: block;">
               👤 Associar ao Cadastro do Paciente:
             </label>
-            <select id="uPatientSelect" class="form-select" style="font-size: 0.85rem; font-weight: 600; background: #0F172A; color: #FFF;">
+            <select id="uPatientSelect" class="form-select" style="font-size: 0.85rem; font-weight: 600; background: #0F172A; color: #FFF; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%;">
               <option value="new">+ Cadastrar Novo Paciente / Usar Dados do Cabeçalho</option>
             </select>
           </div>
 
           <!-- Patient Details Fields -->
           <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.75rem;">
-            <div class="form-group">
-              <label style="font-size: 0.75rem;">Nome Completo do Paciente:</label>
-              <input type="text" id="uPatientName" class="form-select" placeholder="Ex: ERICK LIMA" value="ERICK LIMA">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block;">Nome Completo do Paciente:</label>
+              <input type="text" id="uPatientName" class="form-select" placeholder="Ex: ERICK LIMA" value="ERICK LIMA" style="background: #0F172A; color: #FFF; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%;">
             </div>
 
-            <div class="form-group">
-              <label style="font-size: 0.75rem;">CPF / Prontuário:</label>
-              <input type="text" id="uPatientCpf" class="form-select" placeholder="CPF: 123.456.789-00" value="CPF: 123.456.789-00">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block;">CPF / Prontuário:</label>
+              <input type="text" id="uPatientCpf" class="form-select" placeholder="CPF: 123.456.789-00" value="CPF: 123.456.789-00" style="background: #0F172A; color: #FFF; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%;">
             </div>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
-            <div class="form-group">
-              <label style="font-size: 0.75rem;">Modalidade:</label>
-              <select id="uModality" class="form-select" style="background: #0F172A; color: #FFF;">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block;">Modalidade:</label>
+              <select id="uModality" class="form-select" style="background: #0F172A; color: #FFF; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%;">
                 <option value="US">Ultrassonografia (US)</option>
                 <option value="CT">Tomografia (TC)</option>
                 <option value="RM">Ressonância (RM)</option>
@@ -93,26 +93,26 @@ export function renderUploadModal(container, callbacks) {
               </select>
             </div>
 
-            <div class="form-group">
-              <label style="font-size: 0.75rem;">Idade / Sexo:</label>
-              <input type="text" id="uPatientAgeSex" class="form-select" value="38a / M">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block;">Idade / Sexo:</label>
+              <input type="text" id="uPatientAgeSex" class="form-select" value="38a / M" style="background: #0F172A; color: #FFF; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%;">
             </div>
 
-            <div class="form-group">
-              <label style="font-size: 0.75rem;">Convênio:</label>
-              <input type="text" id="uAgreement" class="form-select" value="Bradesco Saúde">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block;">Convênio:</label>
+              <input type="text" id="uAgreement" class="form-select" value="Bradesco Saúde" style="background: #0F172A; color: #FFF; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%;">
             </div>
           </div>
 
-          <div class="form-group">
-            <label style="font-size: 0.75rem;">Descrição do Exame / Estudo:</label>
-            <input type="text" id="uStudyDescription" class="form-select" value="ULTRASSOM DE ABDÔMEN TOTAL COM DOPPLER">
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block;">Descrição do Exame / Estudo:</label>
+            <input type="text" id="uStudyDescription" class="form-select" value="ULTRASSOM DE ABDÔMEN TOTAL COM DOPPLER" style="background: #0F172A; color: #FFF; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%;">
           </div>
 
           <!-- Submit Button -->
-          <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
-            <button class="btn-secondary" id="btnCancelStep2">Cancelar</button>
-            <button class="btn-primary" id="btnConfirmImport" style="background: var(--status-ready); border-color: var(--status-ready); font-weight: 700; padding: 0.65rem 1.25rem;">
+          <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem; margin-top: 0.25rem;">
+            <button class="btn-secondary" id="btnCancelStep2" style="padding: 0.55rem 1rem; border-radius: 6px;">Cancelar</button>
+            <button class="btn-primary" id="btnConfirmImport" style="background: var(--status-ready); border-color: var(--status-ready); font-weight: 700; padding: 0.55rem 1.25rem; border-radius: 6px;">
               🚀 Confirmar & Importar Exame Completo
             </button>
           </div>
