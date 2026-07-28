@@ -267,10 +267,10 @@ export function renderDicomViewer(container, study, state, callbacks) {
       const frameIdx = Math.min(sliceIndex - 1, study.capturedFrames.length - 1);
       const currentFrame = study.capturedFrames[Math.max(0, frameIdx)];
 
-      if (currentFrame && currentFrame.dataUrl && currentFrame.dataUrl.length > 100) {
+      if (currentFrame && currentFrame.dataUrl && currentFrame.dataUrl.startsWith('data:image/')) {
         const img = new Image();
         img.onload = () => {
-          if (img.width > 10 && img.height > 10) {
+          if (img.width > 20 && img.height > 20) {
             canvas.width = 512;
             canvas.height = 512;
             ctx.fillStyle = '#000000';
