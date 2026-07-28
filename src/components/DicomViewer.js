@@ -138,6 +138,11 @@ export function renderDicomViewer(container, study, state, callbacks) {
           </button>
           <input type="file" id="fileExternalPhoto" accept="image/*" multiple style="display: none;">
 
+          <button class="tool-btn" id="btnOpenUltrasoundDataModal" style="background: rgba(168, 85, 247, 0.18); border-color: #A855F7;" title="Inserir / Editar Informações, Medidas e Achados Ultrassonográficos">
+            <i data-lucide="file-text" style="width: 15px; height: 15px; color: #C084FC;"></i>
+            <span style="color: #C084FC; font-weight: 700;">📝 Dados do Exame US</span>
+          </button>
+
           <button class="tool-btn" id="btnSaveViewer" style="background: var(--status-ready); border-color: var(--status-ready); color: #000; font-weight: 700;" title="Salvar Exame e Fotos no Banco Permanente">
             <i data-lucide="save" style="width: 15px; height: 15px; color: #000;"></i>
             <span>💾 Salvar Tudo</span>
@@ -450,6 +455,123 @@ export function renderDicomViewer(container, study, state, callbacks) {
     saveStudiesToStorage(state.studies);
     showToast(`💾 Sucesso! O exame e todas as ${study.capturedFrames.length} fotos foram salvos permanentemente!`, "success");
   });
+
+  // Open Ultrasound Exam Information Modal
+  container.querySelector('#btnOpenUltrasoundDataModal')?.addEventListener('click', () => {
+    openUltrasoundModal();
+  });
+
+  function openUltrasoundModal() {
+    const modalBackdrop = document.createElement('div');
+    modalBackdrop.className = 'modal-backdrop open';
+    modalBackdrop.id = 'usInfoModalBackdrop';
+
+    modalBackdrop.innerHTML = `
+      <div class="modal-card" style="max-width: 650px; width: 92%; display: flex; flex-direction: column; gap: 1rem; background: #0A0F1D; border: 1px solid var(--primary-cyan); box-shadow: 0 0 30px rgba(0, 229, 255, 0.25);">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+          <div>
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--primary-cyan); display: flex; align-items: center; gap: 0.4rem;">
+              📝 Inserir / Editar Informações do Exame Ultrassonográfico
+            </h3>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 2px 0 0 0;">
+              Paciente: <strong>${study.patientName}</strong> (${study.patientId}) — Modalidade: <strong>${study.modality}</strong>
+            </p>
+          </div>
+          <button class="btn-icon" id="btnCloseUsModal" style="width: 32px; height: 32px; background: rgba(255,255,255,0.1); border-color: var(--border-light); color: #FFF; font-weight: 700;">✕</button>
+        </div>
+
+        <!-- Preset Quick Filler -->
+        <div style="background: rgba(0, 229, 255, 0.05); border: 1px solid var(--border-light); padding: 0.6rem; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+          <span style="font-size: 0.75rem; font-weight: 700; color: var(--primary-cyan); white-space: nowrap;">⚡ Carregar Modelo / Pré-set de Medidas:</span>
+          <select id="usPresetSelector" class="form-select" style="font-size: 0.78rem; background: #0F172A; color: #FFF; flex: 1;">
+            <option value="">-- Selecionar Pré-set Médico --</option>
+            <option value="US_ABDOMEN_NORMAL">Ultrassom de Abdômen Total (Normal)</option>
+            <option value="US_ESTEATOSE">Esteatose Hepática Moderada (Grau II)</option>
+            <option value="US_COLELITIASE">Colelitíase (Cálculos em Vesícula Biliar)</option>
+            <option value="US_CISTO_RENAL">Cisto Renal Simples</option>
+            <option value="US_OBSTETRICO">Ultrassom Obstétrico (Gestação Única)</option>
+            <option value="US_TIREOIDE">Ultrassom de Tireóide (Nódulo Benigno)</option>
+            <option value="US_CAROTIDAS">Ultrassom de Carótidas e Vertebrais</option>
+            <option value="US_TRANSVAGINAL">Ultrassom Pelvico Transvaginal</option>
+          </select>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block;">Indicação Clínica / Suspeita:</label>
+              <input type="text" id="usModalClinical" class="form-select" value="${study.clinicalIndication || 'Dor abdominal difusa a esclarecer.'}" style="background: #0F172A; color: #FFF; padding: 0.45rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%;">
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block;">Técnica Ultrassonográfica:</label>
+              <input type="text" id="usModalTechnique" class="form-select" value="${study.technique || 'Transdutor Convexo 3.5 MHz e Linear 7.5 MHz em tempo real.'}" style="background: #0F172A; color: #FFF; padding: 0.45rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%;">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block;">Achados & Medidas dos Órgãos Ultrassonografados:</label>
+            <textarea id="usModalFindings" class="form-select" style="background: #0F172A; color: #FFF; padding: 0.6rem; font-size: 0.82rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%; height: 110px; font-family: 'Consolas', monospace; line-height: 1.4;">${study.findingsText || 'Fígado com dimensões preservadas, contornos regulares e ecotextura homogênea.\nVesícula biliar tópica, anecóica, sem evidência de cálculos.\nRins tópicos com espessura parenquimatosa preservada.\nBexiga repleta e sem alterações vesicais.'}</textarea>
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block;">Impressão Diagnóstica / Conclusão do Laudo:</label>
+            <input type="text" id="usModalImpression" class="form-select" value="${study.impressionText || 'Exame ultrassonográfico dentro dos padrões da normalidade.'}" style="background: #0F172A; color: #FFF; padding: 0.45rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%;">
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+          <button class="btn-secondary" id="btnCancelUsModal">Cancelar</button>
+          <button class="btn-primary" id="btnSaveUsModal" style="background: var(--status-ready); border-color: var(--status-ready); font-weight: 700; padding: 0.55rem 1.25rem;">
+            ⚡ Salvar Dados & Aplicar ao Laudo
+          </button>
+        </div>
+
+      </div>
+    `;
+
+    document.body.appendChild(modalBackdrop);
+
+    const close = () => modalBackdrop.remove();
+    modalBackdrop.querySelector('#btnCloseUsModal').addEventListener('click', close);
+    modalBackdrop.querySelector('#btnCancelUsModal').addEventListener('click', close);
+
+    // Preset selector handler
+    modalBackdrop.querySelector('#usPresetSelector').addEventListener('change', (e) => {
+      const val = e.target.value;
+      if (val === 'US_ABDOMEN_NORMAL') {
+        modalBackdrop.querySelector('#usModalTechnique').value = "Transdutor Convexo 3.5 MHz em tempo real.";
+        modalBackdrop.querySelector('#usModalFindings').value = "Fígado de dimensões preservadas (14.2 cm no LHD), superfície regular e ecotextura homogênea.\nVesícula biliar normotrófica, paredes finas e anecóica.\nVias biliares intra e extra-hepáticas de calibre normal.\nPâncreas e baço de contornos e ecotextura preservadas.\nRins tópicos, dimensões normais (RD: 10.5 cm, RE: 10.8 cm) sem hidronefrose.";
+        modalBackdrop.querySelector('#usModalImpression').value = "Exame ultrassonográfico de abdômen total dentro dos padrões da normalidade.";
+      } else if (val === 'US_ESTEATOSE') {
+        modalBackdrop.querySelector('#usModalTechnique').value = "Transdutor Convexo 3.5 MHz com atenuação acústica posterior.";
+        modalBackdrop.querySelector('#usModalFindings').value = "Fígado aumentado de volume (LHD: 16.5 cm), apresentando aumento difuso da ecotextura parenquimatosa com atenuação acústica posterior e atenuação da visualização de vasos hepáticos profundos.\nVesícula biliar normotrófica sem cálculos.\nRins de ecotextura e dimensões preservadas.";
+        modalBackdrop.querySelector('#usModalImpression').value = "Esteatose Hepática Moderada (Grau II).";
+      } else if (val === 'US_COLELITIASE') {
+        modalBackdrop.querySelector('#usModalTechnique').value = "Transdutor Convexo 3.5 MHz em decúbitos dorsal e lateral esquerdo.";
+        modalBackdrop.querySelector('#usModalFindings').value = "Fígado de dimensões normais.\nVesícula biliar normotrófica, apresentando cálculo móbile de 1.4 cm em seu interior, gerando sombra acústica posterior bem definida. Paredes vesicais finas (2.0 mm).\nColedoco de calibre normal (3.5 mm).";
+        modalBackdrop.querySelector('#usModalImpression').value = "Colelitíase (Cálculo em vesícula biliar sem sinais de colecistite aguda).";
+      } else if (val === 'US_OBSTETRICO') {
+        modalBackdrop.querySelector('#usModalTechnique').value = "Transdutor Convexo Volumétrico 4.0 MHz com Doppler Colorido.";
+        modalBackdrop.querySelector('#usModalFindings').value = "Feto único vivo em apresentação cefálica.\nBPM: 148 bpm (ritmo regular).\nDBP: 72 mm | CC: 265 mm | CA: 240 mm | COMP. FÊMUR: 54 mm.\nPeso fetal estimado: 1.250 g (Percentil 50).\nLíquido amniótico de volume normal (ILA: 13.5 cm).\nPlacenta fúndica posterior Grau I.";
+        modalBackdrop.querySelector('#usModalImpression').value = "Gestação única tópica de 28 semanas e 4 dias. Vitalidade fetal preservada.";
+      }
+    });
+
+    modalBackdrop.querySelector('#btnSaveUsModal').addEventListener('click', () => {
+      study.clinicalIndication = modalBackdrop.querySelector('#usModalClinical').value.trim();
+      study.technique = modalBackdrop.querySelector('#usModalTechnique').value.trim();
+      study.findingsText = modalBackdrop.querySelector('#usModalFindings').value.trim();
+      study.impressionText = modalBackdrop.querySelector('#usModalImpression').value.trim();
+
+      study.reportText = `INDICAÇÃO CLÍNICA: ${study.clinicalIndication}\nTÉCNICA: ${study.technique}\n\nACHADOS E MEDIDAS ULTRASSONOGRÁFICAS:\n${study.findingsText}\n\nIMPRESSÃO DIAGNÓSTICA / CONCLUSÃO:\n${study.impressionText}`;
+
+      saveStudiesToStorage(state.studies);
+      close();
+      showToast("✅ Informações do exame ultrassonográfico salvas no laudo com sucesso!", "success");
+    });
+  }
 
   // Active Tool Click Handlers
   const toolButtons = {

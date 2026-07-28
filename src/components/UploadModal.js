@@ -110,6 +110,35 @@ export function renderUploadModal(container, callbacks) {
             <input type="text" id="uStudyDescription" class="form-select" value="ULTRASSOM DE ABDÔMEN TOTAL COM DOPPLER" style="background: #0F172A; color: #FFF; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%;">
           </div>
 
+          <!-- Informações Adicionais do Exame Ultrassonográfico -->
+          <div style="background: rgba(0, 229, 255, 0.05); border: 1px solid var(--border-light); padding: 0.75rem; border-radius: 8px; display: flex; flex-direction: column; gap: 0.5rem;">
+            <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--primary-cyan); margin: 0; display: flex; align-items: center; gap: 4px;">
+              <span>📝 Informações Clínicas & Laudo Ultrassonográfico</span>
+            </h4>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block;">Indicação Clínica:</label>
+                <input type="text" id="uClinicalIndication" class="form-select" placeholder="Ex: Dor abdominal, nódulo, pré-natal" value="Dor abdominal difusa a esclarecer." style="background: #0F172A; color: #FFF; padding: 0.4rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%;">
+              </div>
+
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block;">Técnica Ultrassonográfica:</label>
+                <input type="text" id="uTechnique" class="form-select" placeholder="Ex: Transdutor Convexo 3.5 MHz" value="Transdutor Convexo 3.5 MHz em tempo real." style="background: #0F172A; color: #FFF; padding: 0.4rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%;">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block;">Achados & Medidas dos Órgãos:</label>
+              <textarea id="uFindingsText" class="form-select" placeholder="Descreva os achados da ultrassonografia..." style="background: #0F172A; color: #FFF; padding: 0.4rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%; height: 50px; font-family: inherit;">Fígado com dimensão normal e ecotextura homogênea. Vesícula biliar alítica de paredes finas. Rins tópicos de contornos preservados.</textarea>
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block;">Impressão Diagnóstica / Conclusão:</label>
+              <input type="text" id="uImpressionText" class="form-select" placeholder="Conclusão do exame..." value="Exame ultrassonográfico sem alterações significativas." style="background: #0F172A; color: #FFF; padding: 0.4rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-light); width: 100%;">
+            </div>
+          </div>
+
           <!-- Submit Button -->
           <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem; margin-top: 0.25rem;">
             <button class="btn-secondary" id="btnCancelStep2" style="padding: 0.55rem 1rem; border-radius: 6px;">Cancelar</button>
@@ -272,6 +301,11 @@ export function renderUploadModal(container, callbacks) {
       }
     }
 
+    const clinicalIndication = container.querySelector('#uClinicalIndication')?.value.trim() || "Dor abdominal difusa a esclarecer.";
+    const technique = container.querySelector('#uTechnique')?.value.trim() || "Transdutor Convexo 3.5 MHz em tempo real.";
+    const findingsText = container.querySelector('#uFindingsText')?.value.trim() || "Órgãos abdominais com ecotextura e dimensões preservadas.";
+    const impressionText = container.querySelector('#uImpressionText')?.value.trim() || "Exame ultrassonográfico dentro da normalidade.";
+
     const newStudy = {
       id: `EX-${Math.floor(10000 + Math.random() * 90000)}`,
       patientName: name,
@@ -280,6 +314,10 @@ export function renderUploadModal(container, callbacks) {
       gender: "M",
       modality: modality,
       studyDescription: description,
+      clinicalIndication: clinicalIndication,
+      technique: technique,
+      findingsText: findingsText,
+      impressionText: impressionText,
       date: new Date().toISOString().slice(0, 16).replace('T', ' '),
       modalitiesInStudy: [modality],
       seriesCount: 1,
