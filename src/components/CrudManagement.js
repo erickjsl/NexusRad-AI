@@ -1,9 +1,11 @@
 // ==========================================================================
-// NexusRad AI - Enterprise CRUD Management System with High-Visibility Icons & Toast Feedback
+// NexusRad AI - Enterprise CRUD Management System (Zero Browser Prompts/Alerts)
+// Fully Customized Glassmorphism Toast Notifications & Confirm Dialogs
 // ==========================================================================
 
 import { MOCK_TEMPLATES } from '../data/mockData.js';
 import { createIcons, Edit, Trash2, X, UserPlus, FileText, CreditCard, User, FolderOpen, Search, CheckCircle2 } from 'lucide';
+import { showToast, showConfirmDialog } from '../utils/toast.js';
 
 export function renderCrudManagement(container, state, callbacks) {
   let activeTab = 'patients'; // 'patients' | 'templates' | 'doctors' | 'agreements'
@@ -66,7 +68,7 @@ export function renderCrudManagement(container, state, callbacks) {
               Central de Cadastros & Gestão CRUD do Sistema
             </h1>
             <p style="color: var(--text-muted); font-size: 0.85rem;">
-              Gerenciamento profissional com alertas de confirmação e alta visibilidade para Pacientes, Laudos, Médicos e Convênios.
+              Gerenciamento profissional com notificações Toast personalizadas para Pacientes, Laudos, Médicos e Convênios.
             </p>
           </div>
         </div>
@@ -514,11 +516,15 @@ export function renderCrudManagement(container, state, callbacks) {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index);
         const name = btn.dataset.name;
-        if (confirm(`⚠️ CONFIRMAÇÃO DE EXCLUSÃO:\n\nTem certeza que deseja excluir o cadastro do paciente "${name}" do banco de dados?`)) {
-          state.customPatients.splice(idx, 1);
-          render();
-          alert(`✅ O cadastro do paciente "${name}" foi excluído com sucesso!`);
-        }
+        showConfirmDialog(
+          "Confirmar Exclusão de Paciente",
+          `Tem certeza que deseja excluir permanentemente o cadastro do paciente <strong>${name}</strong>?`,
+          () => {
+            state.customPatients.splice(idx, 1);
+            render();
+            showToast(`O cadastro do paciente "${name}" foi excluído com sucesso.`, 'success');
+          }
+        );
       });
     });
 
@@ -540,11 +546,15 @@ export function renderCrudManagement(container, state, callbacks) {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index);
         const name = btn.dataset.name;
-        if (confirm(`⚠️ CONFIRMAÇÃO DE EXCLUSÃO:\n\nTem certeza que deseja excluir a máscara de laudo "${name}"?`)) {
-          state.customTemplatesList.splice(idx, 1);
-          render();
-          alert(`✅ A máscara de laudo "${name}" foi excluída com sucesso!`);
-        }
+        showConfirmDialog(
+          "Confirmar Exclusão de Máscara de Laudo",
+          `Tem certeza que deseja excluir a máscara de laudo <strong>"${name}"</strong>?`,
+          () => {
+            state.customTemplatesList.splice(idx, 1);
+            render();
+            showToast(`Máscara de laudo "${name}" excluída.`, 'success');
+          }
+        );
       });
     });
 
@@ -558,11 +568,15 @@ export function renderCrudManagement(container, state, callbacks) {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index);
         const name = btn.dataset.name;
-        if (confirm(`⚠️ CONFIRMAÇÃO DE EXCLUSÃO:\n\nTem certeza que deseja remover o médico "${name}" do corpo clínico?`)) {
-          state.customDoctors.splice(idx, 1);
-          render();
-          alert(`✅ Cadastro do médico "${name}" removido com sucesso!`);
-        }
+        showConfirmDialog(
+          "Confirmar Remoção de Médico",
+          `Tem certeza que deseja remover o médico <strong>"${name}"</strong> do corpo clínico?`,
+          () => {
+            state.customDoctors.splice(idx, 1);
+            render();
+            showToast(`Médico "${name}" removido com sucesso.`, 'success');
+          }
+        );
       });
     });
 
@@ -576,11 +590,15 @@ export function renderCrudManagement(container, state, callbacks) {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index);
         const name = btn.dataset.name;
-        if (confirm(`⚠️ CONFIRMAÇÃO DE EXCLUSÃO:\n\nTem certeza que deseja excluir o convênio "${name}" da tabela TUSS?`)) {
-          state.customAgreements.splice(idx, 1);
-          render();
-          alert(`✅ O convênio "${name}" foi excluído com sucesso!`);
-        }
+        showConfirmDialog(
+          "Confirmar Exclusão de Convênio",
+          `Tem certeza que deseja excluir o convênio <strong>"${name}"</strong> da tabela TUSS?`,
+          () => {
+            state.customAgreements.splice(idx, 1);
+            render();
+            showToast(`Convênio "${name}" excluído.`, 'success');
+          }
+        );
       });
     });
   }
@@ -598,7 +616,7 @@ export function renderCrudManagement(container, state, callbacks) {
     container.querySelector('#btnSavePatientModal')?.addEventListener('click', () => {
       const name = container.querySelector('#mPatientName').value.trim();
       if (!name) {
-        alert("⚠️ Nome do paciente é obrigatório!");
+        showToast("Por favor, informe o nome do paciente.", "warning");
         return;
       }
 
@@ -614,14 +632,14 @@ export function renderCrudManagement(container, state, callbacks) {
           name: name.toUpperCase(),
           age, gender, phone, agreement
         };
-        alert(`✅ Dados do paciente ${name.toUpperCase()} atualizados com sucesso!`);
+        showToast(`Dados do paciente ${name.toUpperCase()} atualizados!`, "success");
       } else {
         state.customPatients.unshift({
           id: `CPF: ${cpf}`,
           name: name.toUpperCase(),
           age, gender, phone, agreement
         });
-        alert(`✅ Paciente ${name.toUpperCase()} cadastrado no banco de dados com sucesso!`);
+        showToast(`Paciente ${name.toUpperCase()} cadastrado com sucesso!`, "success");
       }
 
       closeModal();
@@ -631,7 +649,7 @@ export function renderCrudManagement(container, state, callbacks) {
     container.querySelector('#btnSaveTemplateModal')?.addEventListener('click', () => {
       const name = container.querySelector('#mTplName').value.trim();
       if (!name) {
-        alert("⚠️ Título do modelo é obrigatório!");
+        showToast("Por favor, informe o título da máscara de laudo.", "warning");
         return;
       }
 
@@ -647,11 +665,11 @@ export function renderCrudManagement(container, state, callbacks) {
 
       if (modalState.type === 'edit_template' && modalState.index !== undefined) {
         state.customTemplatesList[modalState.index] = newTpl;
-        alert(`✅ Máscara de laudo "${name}" atualizada com sucesso!`);
+        showToast(`Máscara "${name}" atualizada!`, "success");
       } else {
         state.customTemplatesList.unshift(newTpl);
         MOCK_TEMPLATES[newTpl.key] = newTpl;
-        alert(`✅ Nova máscara de laudo "${name}" cadastrada com sucesso!`);
+        showToast(`Máscara "${name}" criada com sucesso!`, "success");
       }
 
       closeModal();
@@ -661,7 +679,7 @@ export function renderCrudManagement(container, state, callbacks) {
     container.querySelector('#btnSaveDoctorModal')?.addEventListener('click', () => {
       const name = container.querySelector('#mDoctorName').value.trim();
       if (!name) {
-        alert("⚠️ Nome do médico é obrigatório!");
+        showToast("Por favor, informe o nome do médico.", "warning");
         return;
       }
 
@@ -673,7 +691,7 @@ export function renderCrudManagement(container, state, callbacks) {
       };
 
       state.customDoctors.push(doc);
-      alert(`✅ Médico ${name} cadastrado no corpo clínico com sucesso!`);
+      showToast(`Médico ${name} cadastrado no corpo clínico!`, "success");
       closeModal();
     });
 
@@ -681,7 +699,7 @@ export function renderCrudManagement(container, state, callbacks) {
     container.querySelector('#btnSaveAgreementModal')?.addEventListener('click', () => {
       const name = container.querySelector('#mAgreeName').value.trim();
       if (!name) {
-        alert("⚠️ Nome do convênio é obrigatório!");
+        showToast("Por favor, informe o nome do convênio.", "warning");
         return;
       }
 
@@ -693,7 +711,7 @@ export function renderCrudManagement(container, state, callbacks) {
         status: 'ATIVO'
       });
 
-      alert(`✅ Convênio ${name} cadastrado na tabela TUSS com sucesso!`);
+      showToast(`Convênio ${name} cadastrado na tabela TUSS!`, "success");
       closeModal();
     });
   }
