@@ -618,6 +618,75 @@ export function renderDicomViewer(container, study, state, callbacks) {
     updateRender();
   });
 
+  container.querySelector('#toolReset')?.addEventListener('click', () => {
+    zoom = 1;
+    pan = { x: 0, y: 0 };
+    rotationAngle = 0;
+    inverted = false;
+    windowWidth = study.modality === 'CT' ? 1500 : 400;
+    windowLevel = study.modality === 'CT' ? -600 : 40;
+    measurements = [];
+    study.measurements = [];
+    currentMeasurementDraft = null;
+    saveStudiesToStorage(state.studies);
+    container.querySelector('#toolInvert')?.classList.remove('active');
+    updateRender();
+    showToast("🔄 Visualização e medições resetadas.", "info");
+  });
+
+  // Enterprise Radiology Workstation Keyboard Shortcuts
+  const handleKeyDown = (e) => {
+    if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT')) {
+      return;
+    }
+
+    const key = e.key.toUpperCase();
+    if (key === 'Z' || key === 'R') {
+      rotationAngle = (rotationAngle + 90) % 360;
+      updateRender();
+    } else if (key === 'I') {
+      inverted = !inverted;
+      container.querySelector('#toolInvert')?.classList.toggle('active', inverted);
+      updateRender();
+    } else if (key === 'W') {
+      setActiveTool('windowing');
+    } else if (key === 'M' || key === 'L') {
+      setActiveTool('line');
+    } else if (key === 'A') {
+      setActiveTool('angle');
+    } else if (key === 'O') {
+      setActiveTool('roi');
+    } else if (key === 'C') {
+      measurements = [];
+      study.measurements = [];
+      saveStudiesToStorage(state.studies);
+      updateRender();
+      showToast("🧹 Medições limpas do canvas.", "info");
+    } else if (key === '+' || key === '=') {
+      zoom = Math.min(5, zoom * 1.15);
+      updateRender();
+    } else if (key === '-' || key === '_') {
+      zoom = Math.max(0.5, zoom / 1.15);
+      updateRender();
+    } else if (e.key === 'ArrowRight' || e.key === ' ') {
+      if (study.instanceCount > 1) {
+        sliceIndex = (sliceIndex % study.instanceCount) + 1;
+        const sliceSlider = container.querySelector('#sliceSlider');
+        if (sliceSlider) sliceSlider.value = sliceIndex;
+        updateRender();
+      }
+    } else if (e.key === 'ArrowLeft') {
+      if (study.instanceCount > 1) {
+        sliceIndex = sliceIndex > 1 ? sliceIndex - 1 : study.instanceCount;
+        const sliceSlider = container.querySelector('#sliceSlider');
+        if (sliceSlider) sliceSlider.value = sliceIndex;
+        updateRender();
+      }
+    }
+  };
+
+  window.addEventListener('keydown', handleKeyDown);
+
   // Interactive Mouse Events
   canvas.addEventListener('mousedown', (e) => {
     isMouseDown = true;
