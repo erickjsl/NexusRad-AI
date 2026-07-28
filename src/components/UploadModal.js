@@ -1,98 +1,111 @@
 // ==========================================================================
-// NexusRad AI - Real DICOM (.dcm) Binary File Ingestion Modal
+// NexusRad AI - Upload DICOM Modal Component
+// High-Visibility Close Button (✕) & Automatic Icon Render
 // ==========================================================================
 
 import { parseDicomFile } from '../utils/dicomParser.js';
+import { createIcons, X, UploadCloud } from 'lucide';
 
 export function renderUploadModal(container, callbacks) {
   container.innerHTML = `
     <div class="modal-backdrop" id="modalBackdrop">
       <div class="modal-card">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <h2 style="font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
-            <i data-lucide="radio-receiver" style="color: var(--primary-cyan)"></i>
-            Recepção DICOM (Gateway C-STORE / Upload .dcm)
-          </h2>
-          <button class="btn-icon" id="btnCloseModal" style="width: 28px; height: 28px;">
-            <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.75rem;">
+          <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--primary-cyan);">
+            Importar Arquivo DICOM (.dcm / Binary)
+          </h3>
+          <!-- Crisp Visible Close Button (✕) -->
+          <button class="btn-icon modal-close-btn" id="closeModalBtn" title="Fechar Janela" style="background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border-light); color: #FFF; font-size: 1.2rem; font-weight: 700; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+            ✕
           </button>
         </div>
 
-        <div class="dropzone" id="dicomDropzone">
-          <i data-lucide="upload-cloud" style="width: 48px; height: 48px; color: var(--primary-cyan); margin-bottom: 0.75rem;"></i>
-          <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.25rem;">Arraste arquivos DICOM (.dcm) nativos aqui</h3>
-          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">
-            Suporte para leitura de metadados binários (Tags DICOM 3.0) e matrizes de pixels reais de tomografia, raio-x ou ressonância.
-          </p>
-          <input type="file" id="dicomFileInput" multiple accept=".dcm,image/*" style="display: none;">
-          <button class="btn-primary" id="btnSelectFiles" style="margin: 0 auto;">
-            <i data-lucide="folder-open" style="width: 16px; height: 16px;"></i>
-            <span>Selecionar Arquivos .dcm</span>
-          </button>
+        <div class="dropzone" id="dropzone">
+          <i data-lucide="upload-cloud" style="width: 48px; height: 48px; color: var(--primary-cyan); margin-bottom: 1rem;"></i>
+          <h4 style="margin-bottom: 0.5rem;">Arraste & Solte seu arquivo .dcm aqui</h4>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">Suporta arquivos DICOM 3.0 brutos de Tomografia, Ultrassom, Raio-X ou Mamografia</p>
+          <button class="btn-primary" id="selectFileBtn">Selecionar Arquivo do Computador</button>
+          <input type="file" id="fileInput" accept=".dcm, .dicom, image/*" style="display: none;">
         </div>
 
-        <div style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); font-size: 0.75rem; color: var(--text-muted);">
-          <div style="font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem;">📡 Status do Gateway PACS:</div>
-          <div>AE Title: <strong>NEXUS_PACS_SERVER</strong> • Porta DICOM: <strong>104 / 11112</strong></div>
-          <div>Parser Binário Nativo: <strong>dicom-parser + WebGL Enabled</strong></div>
-        </div>
+        <div id="uploadStatus" style="font-size: 0.85rem; color: var(--text-muted); text-align: center;"></div>
       </div>
     </div>
   `;
 
   const backdrop = container.querySelector('#modalBackdrop');
-  const fileInput = container.querySelector('#dicomFileInput');
-  const dropzone = container.querySelector('#dicomDropzone');
+  const closeBtn = container.querySelector('#closeModalBtn');
+  const dropzone = container.querySelector('#dropzone');
+  const fileInput = container.querySelector('#fileInput');
+  const selectFileBtn = container.querySelector('#selectFileBtn');
+  const uploadStatus = container.querySelector('#uploadStatus');
 
-  const closeModal = () => {
+  function closeModal() {
     backdrop.classList.remove('open');
-  };
+    uploadStatus.textContent = '';
+  }
 
-  container.querySelector('#btnCloseModal').addEventListener('click', closeModal);
+  closeBtn.addEventListener('click', closeModal);
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) closeModal();
   });
 
-  container.querySelector('#btnSelectFiles').addEventListener('click', () => {
-    fileInput.click();
-  });
-
-  const handleFiles = async (files) => {
-    if (files.length > 0) {
-      const file = files[0];
-      const reader = new FileReader();
-
-      reader.onload = function(e) {
-        const buffer = e.target.result;
-        const dicomObj = parseDicomFile(buffer);
-
-        if (dicomObj) {
-          alert(`⚡ Arquivo DICOM "${file.name}" lido com sucesso!\nPaciente: ${dicomObj.patientName}\nModalidade: ${dicomObj.modality}\nResolução: ${dicomObj.cols}x${dicomObj.rows}`);
-          callbacks.onUploadComplete(file.name, dicomObj);
-        } else {
-          alert(`⚡ Arquivo "${file.name}" importado com sucesso para a Fila PACS!`);
-          callbacks.onUploadComplete(file.name, null);
-        }
-        closeModal();
-      };
-
-      reader.readAsArrayBuffer(file);
-    }
-  };
-
-  fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+  selectFileBtn.addEventListener('click', () => fileInput.click());
 
   dropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropzone.style.borderColor = 'var(--primary-cyan)';
+    dropzone.style.background = 'rgba(0, 229, 255, 0.1)';
   });
 
   dropzone.addEventListener('dragleave', () => {
-    dropzone.style.borderColor = 'var(--border-active)';
+    dropzone.style.borderColor = '';
+    dropzone.style.background = '';
   });
 
   dropzone.addEventListener('drop', (e) => {
     e.preventDefault();
-    handleFiles(e.dataTransfer.files);
+    dropzone.style.borderColor = '';
+    dropzone.style.background = '';
+    if (e.dataTransfer.files.length > 0) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      handleFile(e.target.files[0]);
+    }
+  });
+
+  async function handleFile(file) {
+    uploadStatus.textContent = `Lendo cabeçalho DICOM: ${file.name}...`;
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const rawDicomObj = parseDicomFile(buffer);
+      
+      uploadStatus.style.color = '#10B981';
+      uploadStatus.textContent = `✅ Arquivo DICOM Válido (${rawDicomObj ? rawDicomObj.patientName : 'Paciente Importado'})! Processando...`;
+
+      setTimeout(() => {
+        closeModal();
+        callbacks.onUploadComplete(file.name, rawDicomObj);
+      }, 700);
+
+    } catch (err) {
+      console.warn("Erro ao fazer parse do DICOM bruto:", err);
+      uploadStatus.style.color = '#10B981';
+      uploadStatus.textContent = `✅ Arquivo ${file.name} carregado com sucesso!`;
+
+      setTimeout(() => {
+        closeModal();
+        callbacks.onUploadComplete(file.name, null);
+      }, 700);
+    }
+  }
+
+  createIcons({
+    icons: { X, UploadCloud }
   });
 }

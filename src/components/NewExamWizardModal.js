@@ -1,14 +1,15 @@
 // ==========================================================================
-// NexusRad AI - Database Integrated Patient Lookup & Auto-Register Wizard
+// NexusRad AI - Complete Patient Admission & Exam Creation Wizard Modal
+// High-Visibility Close Button (✕) & Automatic Lucide Icon Render
 // ==========================================================================
 
+import { createIcons, X, User, Calendar, ShieldCheck, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide';
 import { formatCPF, validateCPF, calculateAge } from '../utils/cpfValidator.js';
+import { showToast } from '../utils/toast.js';
 
 export function renderNewExamWizardModal(container, state, callbacks) {
   let step = 1;
-  let selectedExistingPatient = null;
-
-  let examData = {
+  let form = {
     patientName: '',
     cpf: '',
     rg: '',
@@ -17,422 +18,378 @@ export function renderNewExamWizardModal(container, state, callbacks) {
     gender: 'M',
     motherName: '',
     phone: '',
-    agreement: 'Bradesco Saúde',
-    cardId: '',
     modality: 'US',
-    examType: 'ULTRASSOM DE ABDÔMEN TOTAL',
+    studyDescription: 'ULTRASSOM DE ABDÔMEN TOTAL',
     laterality: 'N/A',
-    physician: 'Dr. Plantonista Radiologia (CRM/SP 142.890)',
-    crm: 'CRM/SP 142.890'
+    urgency: 'alta',
+    agreement: 'Bradesco Saúde',
+    cardId: 'BRAD-8849-2026',
+    physician: 'Dr. Carlos Roberto de Mendonça',
+    clinicalHistory: 'Dor abdominal difusa a esclarecer.'
   };
 
-  if (!state.customPatients) {
-    state.customPatients = [
-      { id: "CPF: 123.456.789-00", name: "MARIA EDUARDA SILVA", age: "34 anos", birthDate: "1992-04-12", gender: "F", motherName: "JOANA SILVA", phone: "(11) 98888-1122", agreement: "Bradesco Saúde", cardId: "9887123" },
-      { id: "CPF: 987.654.321-11", name: "CARLOS ALBERTO RODRIGUES", age: "58 anos", birthDate: "1968-09-25", gender: "M", motherName: "HELENA RODRIGUES", phone: "(11) 97777-3344", agreement: "Unimed Nacional", cardId: "761234" }
-    ];
+  const samplePatients = state.customPatients || [
+    { name: "CARLOS ALBERTO RODRIGUES", cpf: "123.456.789-00", age: "58 anos", mother: "HELENA RODRIGUES", phone: "(11) 97777-3344", agreement: "Bradesco Saúde" },
+    { name: "MARIA EDUARDA SILVA", cpf: "987.654.321-11", age: "32 anos", mother: "ANA SILVA", phone: "(11) 98888-2211", agreement: "Unimed Nacional" },
+    { name: "ERICK LIMA", cpf: "444.555.666-77", age: "38 anos", mother: "SONIA LIMA", phone: "(11) 99888-7766", agreement: "SulAmérica" }
+  ];
+
+  function refreshModalIcons() {
+    createIcons({
+      icons: { X, User, Calendar, ShieldCheck, ArrowRight, ArrowLeft, CheckCircle2 }
+    });
   }
-
-  const examOptionsByModality = {
-    US: [
-      'ULTRASSOM DE ABDÔMEN TOTAL',
-      'ULTRASSOM OBSTÉTRICO COM DOPPLER (HADLOCK)',
-      'ULTRASSOM PÉLVICO TRANSVAGINAL',
-      'ULTRASSOM DE TIREOIDE (TI-RADS)',
-      'ULTRASSOM DE MAMAS BILATERAL (BI-RADS)',
-      'ULTRASSOM DOPPLER DE CARÓTIDAS',
-      'ULTRASSOM ARTICULAR DE OMBRO'
-    ],
-    CT: [
-      'TC DE TÓRAX COM CONTRASTE EV',
-      'TC DE CRÂNIO / ENCEFÁLICA',
-      'TC DE ABDÔMEN TOTAL E PELVE'
-    ],
-    DX: [
-      'RAIO-X DE TÓRAX PA E PERFIL',
-      'RAIO-X DE JOELHO AP E PERFIL'
-    ],
-    MR: [
-      'RM DE ENCEFÁLO / ENCEFÁLICA',
-      'RM DE JOELHO COM CONTRASTE'
-    ],
-    MG: [
-      'MAMOGRAFIA DIGITAL BILATERAL'
-    ]
-  };
 
   function render() {
     container.innerHTML = `
       <div class="modal-backdrop open" id="wizardModalBackdrop">
-        <div class="modal-card" style="max-width: 680px; width: 92%; display: flex; flex-direction: column; gap: 1.25rem;">
+        <div class="modal-card" style="max-width: 680px; width: 92%; display: flex; flex-direction: column; gap: 1.25rem; background: #0A0F1D; border: 1px solid var(--primary-cyan); box-shadow: 0 0 30px rgba(0, 229, 255, 0.25);">
           
           <!-- Header -->
-          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); padding-bottom: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.75rem;">
             <div>
-              <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--primary-cyan); display: flex; align-items: center; gap: 0.5rem;">
-                <i data-lucide="file-plus"></i>
+              <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--primary-cyan); display: flex; align-items: center; gap: 0.5rem;">
                 Admissão de Paciente & Recepção de Exame — Passo ${step} de 3
-              </h2>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">
-                ${step === 1 ? '1. Buscar do Banco ou Cadastrar Novo Paciente' : (step === 2 ? '2. Modalidade, Exame & Lateralidade' : '3. Convênio, Médico Solicitante & Confirmação')}
-              </span>
+              </h3>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                ${step === 1 ? '1. Buscar do Banco ou Cadastrar Novo Paciente' : step === 2 ? '2. Dados Clínicos & Seleção da Modalidade do Exame' : '3. Convênio, Guia TISS & Confirmação Final'}
+              </p>
             </div>
-            <button class="btn-icon" id="btnCloseWizardModal" style="width: 28px; height: 28px;">
-              <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+
+            <!-- Crisp Visible Close Button (✕) -->
+            <button class="btn-icon modal-close-btn" id="btnCloseWizard" title="Fechar Janela" style="background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border-light); color: #FFF; font-size: 1.2rem; font-weight: 700; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+              ✕
             </button>
           </div>
 
-          <!-- Step Progress Bar -->
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <div style="flex: 1; height: 6px; border-radius: 3px; background: ${step >= 1 ? 'var(--primary-cyan)' : 'var(--border-light)'}"></div>
-            <div style="flex: 1; height: 6px; border-radius: 3px; background: ${step >= 2 ? 'var(--primary-cyan)' : 'var(--border-light)'}"></div>
-            <div style="flex: 1; height: 6px; border-radius: 3px; background: ${step >= 3 ? 'var(--primary-cyan)' : 'var(--border-light)'}"></div>
+          <!-- Wizard Progress Bar -->
+          <div style="display: flex; gap: 0.5rem; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+            <div style="flex: 1; background: ${step >= 1 ? 'var(--primary-cyan)' : 'transparent'};"></div>
+            <div style="flex: 1; background: ${step >= 2 ? 'var(--primary-cyan)' : 'transparent'};"></div>
+            <div style="flex: 1; background: ${step >= 3 ? 'var(--primary-cyan)' : 'transparent'};"></div>
           </div>
 
-          <!-- Step Body -->
-          <div style="display: flex; flex-direction: column; gap: 1rem;">
-            ${renderStepBody()}
-          </div>
-
-          <!-- Step Footer -->
-          <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
-            ${step > 1 ? `
-              <button class="btn-secondary" id="btnPrevStep" style="font-size: 0.8rem;">
-                <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
-                <span>Voltar Passo</span>
-              </button>
-            ` : '<div></div>'}
-
-            ${step < 3 ? `
-              <button class="btn-primary" id="btnNextStep" style="font-size: 0.8rem;">
-                <span>Avançar para Passo ${step + 1}</span>
-                <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
-              </button>
-            ` : `
-              <button class="btn-primary" id="btnFinishWizard" style="font-size: 0.85rem; background: var(--status-ready); border-color: var(--status-ready); font-weight: 700;">
-                <i data-lucide="play" style="width: 16px; height: 16px;"></i>
-                <span>Confirmar & Iniciar Exame no Viewer</span>
-              </button>
-            `}
+          <!-- Step Content -->
+          <div id="wizardStepContent" style="display: flex; flex-direction: column; gap: 1rem;">
+            ${renderStepContent()}
           </div>
 
         </div>
       </div>
     `;
 
-    const backdrop = container.querySelector('#wizardModalBackdrop');
-    const closeModal = () => backdrop.remove();
-
-    container.querySelector('#btnCloseWizardModal').addEventListener('click', closeModal);
-
-    container.querySelector('#btnPrevStep')?.addEventListener('click', () => {
-      saveCurrentStepData();
-      step--;
-      render();
-    });
-
-    container.querySelector('#btnNextStep')?.addEventListener('click', () => {
-      if (saveCurrentStepData()) {
-        step++;
-        render();
-      }
-    });
-
-    container.querySelector('#btnFinishWizard')?.addEventListener('click', () => {
-      // Check if patient exists in database state.customPatients, if not, auto-register!
-      let patientRecord = state.customPatients.find(p => p.id.includes(examData.cpf) || p.name === examData.patientName.toUpperCase());
-      if (!patientRecord) {
-        patientRecord = {
-          id: `CPF: ${examData.cpf}`,
-          name: examData.patientName.toUpperCase(),
-          age: examData.calculatedAge || '42a',
-          birthDate: examData.birthDate,
-          gender: examData.gender,
-          motherName: examData.motherName.toUpperCase(),
-          phone: examData.phone,
-          agreement: examData.agreement,
-          cardId: examData.cardId
-        };
-        state.customPatients.unshift(patientRecord);
-      }
-
-      const newStudy = {
-        id: `EX-${Math.floor(10000 + Math.random() * 90000)}`,
-        patientName: examData.patientName.toUpperCase(),
-        patientId: `CPF: ${examData.cpf}`,
-        cpfRaw: examData.cpf,
-        rg: examData.rg,
-        birthDate: examData.birthDate,
-        age: examData.calculatedAge || '42a',
-        gender: examData.gender,
-        motherName: examData.motherName.toUpperCase(),
-        phone: examData.phone,
-        agreement: examData.agreement,
-        cardId: examData.cardId,
-        modality: examData.modality,
-        studyDescription: `${examData.examType}${examData.laterality !== 'N/A' ? ` (${examData.laterality})` : ''}`,
-        date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-        modalitiesInStudy: [examData.modality],
-        seriesCount: 1,
-        instanceCount: 1,
-        status: "pronto",
-        urgency: "normal",
-        physician: examData.physician,
-        institution: "NEXUSRAD DIAGNÓSTICO POR IMAGEM S/A",
-        accessionNumber: `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`,
-        kvp: "120 kV",
-        ma: "240 mA",
-        sliceThickness: "1.0 mm",
-        capturedFrames: [],
-        aiFinding: {
-          type: "Exame Pronto no Viewer",
-          confidence: "99.9%",
-          box: { x: 25, y: 25, width: 40, height: 40 },
-          description: "Prontuário vinculado ao banco de dados do sistema. Imagens prontas para laudo."
-        }
-      };
-
-      state.studies.unshift(newStudy);
-      state.selectedStudyId = newStudy.id;
-      closeModal();
-      if (callbacks.onWizardComplete) {
-        callbacks.onWizardComplete(newStudy);
-      }
-    });
-
-    attachStepInputEvents();
+    container.querySelector('#btnCloseWizard')?.addEventListener('click', closeModal);
+    attachStepEvents();
+    refreshModalIcons();
   }
 
-  function renderStepBody() {
+  function renderStepContent() {
     if (step === 1) {
-      const isCpfValid = examData.cpf ? validateCPF(examData.cpf) : false;
-
       return `
-        <!-- Database Search & Autocomplete Dropdown -->
-        <div style="background: rgba(0,229,255,0.05); border: 1px solid var(--primary-cyan); padding: 0.75rem 1rem; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 0.5rem;">
-          <label style="font-size: 0.8rem; font-weight: 700; color: var(--primary-cyan); display: flex; align-items: center; gap: 0.35rem;">
-            <i data-lucide="search" style="width: 14px; height: 14px;"></i>
+        <!-- Patient Database Autocomplete Dropdown -->
+        <div style="background: rgba(0, 229, 255, 0.05); border: 1px solid var(--primary-cyan); padding: 0.85rem; border-radius: 8px; display: flex; flex-direction: column; gap: 0.5rem;">
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--primary-cyan);">
             Buscar Paciente já Cadastrado no Banco de Dados:
           </label>
-          <select id="selectDbPatient" class="form-select" style="font-weight: 600;">
+          <select id="wSelectExistingPatient" class="form-select" style="font-size: 0.85rem;">
             <option value="">-- Selecionar do Banco ou Cadastrar Novo Abaixo --</option>
-            ${state.customPatients.map(p => `
-              <option value="${p.id}">${p.name} (${p.id} • ${p.age || 'N/I'})</option>
+            ${samplePatients.map((p, idx) => `
+              <option value="${idx}">👤 ${p.name} — CPF: ${p.cpf || p.id} (${p.age})</option>
             `).join('')}
           </select>
         </div>
 
         <div class="form-group">
-          <label style="font-size: 0.8rem; font-weight: 700;">Nome Completo do Paciente (Obrigatório):</label>
-          <input type="text" id="wizPatientName" class="form-select" placeholder="Ex: MARCOS ANTONIO SILVA" value="${examData.patientName}" required>
+          <label>NOME COMPLETO DO PACIENTE (OBRIGATÓRIO):</label>
+          <input type="text" id="wPatientName" class="form-select" value="${form.patientName}" placeholder="Ex: CARLOS ALBERTO RODRIGUES">
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
           <div class="form-group">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-              <label style="font-size: 0.8rem; font-weight: 700;">CPF do Paciente:</label>
-              ${examData.cpf ? (isCpfValid ? `<span style="font-size: 0.65rem; color: var(--status-ready); font-weight: 700;">✅ CPF VÁLIDO</span>` : `<span style="font-size: 0.65rem; color: #EF4444; font-weight: 700;">❌ CPF INVÁLIDO</span>`) : ''}
-            </div>
-            <input type="text" id="wizCpf" class="form-select" placeholder="000.000.000-00" value="${examData.cpf}" maxlength="14" style="border-color: ${examData.cpf ? (isCpfValid ? 'var(--status-ready)' : '#EF4444') : 'var(--border-light)'}">
+            <label>CPF DO PACIENTE:</label>
+            <input type="text" id="wCpf" class="form-select" value="${form.cpf}" placeholder="000.000.000-00">
+            <span id="cpfValidationBadge" style="font-size: 0.72rem; margin-top: 2px;"></span>
           </div>
 
           <div class="form-group">
-            <label style="font-size: 0.8rem;">RG / Documento:</label>
-            <input type="text" id="wizRg" class="form-select" placeholder="Ex: 12.345.678-9 SSP/SP" value="${examData.rg}">
+            <label>RG / DOCUMENTO:</label>
+            <input type="text" id="wRg" class="form-select" value="${form.rg}" placeholder="Ex: 12.345.678-9 SSP/SP">
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 0.75rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
           <div class="form-group">
-            <label style="font-size: 0.8rem; font-weight: 700;">Data de Nascimento:</label>
-            <input type="date" id="wizBirthDate" class="form-select" value="${examData.birthDate}">
+            <label>DATA DE NASCIMENTO:</label>
+            <input type="date" id="wBirthDate" class="form-select" value="${form.birthDate}">
           </div>
 
           <div class="form-group">
-            <label style="font-size: 0.8rem; font-weight: 700;">Idade Calculada:</label>
-            <input type="text" id="wizAgeCalculated" class="form-select" readonly value="${examData.calculatedAge || 'Selecione a data'}" style="background: rgba(0,229,255,0.05); color: var(--primary-cyan); font-weight: 700;">
+            <label>IDADE CALCULADA:</label>
+            <input type="text" id="wCalculatedAge" class="form-select" value="${form.calculatedAge}" placeholder="Auto (ex: 58 anos)" readonly style="font-weight: 700; color: var(--primary-cyan);">
           </div>
 
           <div class="form-group">
-            <label style="font-size: 0.8rem; font-weight: 700;">Sexo Biológico:</label>
-            <select id="wizGender" class="form-select">
-              <option value="M" ${examData.gender === 'M' ? 'selected' : ''}>Masculino</option>
-              <option value="F" ${examData.gender === 'F' ? 'selected' : ''}>Feminino</option>
+            <label>SEXO BIOLÓGICO:</label>
+            <select id="wGender" class="form-select">
+              <option value="M" ${form.gender === 'M' ? 'selected' : ''}>Masculino</option>
+              <option value="F" ${form.gender === 'F' ? 'selected' : ''}>Feminino</option>
             </select>
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 0.75rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
           <div class="form-group">
-            <label style="font-size: 0.8rem;">Nome da Mãe (Prontuário SUS/Convênio):</label>
-            <input type="text" id="wizMotherName" class="form-select" placeholder="Ex: MARIA DAS DORES SILVA" value="${examData.motherName}">
+            <label>NOME DA MÃE (PRONTUÁRIO SUS/CONVÊNIO):</label>
+            <input type="text" id="wMotherName" class="form-select" value="${form.motherName}" placeholder="Ex: HELENA RODRIGUES">
           </div>
 
           <div class="form-group">
-            <label style="font-size: 0.8rem;">Celular / WhatsApp:</label>
-            <input type="text" id="wizPhone" class="form-select" placeholder="(11) 98888-7766" value="${examData.phone}">
+            <label>CELULAR / WHATSAPP:</label>
+            <input type="text" id="wPhone" class="form-select" value="${form.phone}" placeholder="(11) 99999-8888">
           </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 0.5rem;">
+          <button class="btn-primary" id="btnGoStep2" style="background: linear-gradient(135deg, #00E5FF 0%, #3B82F6 100%); border: none; font-weight: 700; padding: 0.6rem 1.25rem;">
+            Avançar para Passo 2 ➔
+          </button>
         </div>
       `;
     } else if (step === 2) {
       return `
-        <div class="form-group">
-          <label style="font-size: 0.8rem; font-weight: 700;">Modalidade de Exame:</label>
-          <select id="wizModality" class="form-select" style="font-weight: 700; color: var(--primary-cyan);">
-            <option value="US" ${examData.modality === 'US' ? 'selected' : ''}>Ultrassonografia (US)</option>
-            <option value="CT" ${examData.modality === 'CT' ? 'selected' : ''}>Tomografia Computadorizada (TC)</option>
-            <option value="MR" ${examData.modality === 'MR' ? 'selected' : ''}>Ressonância Magnética (RM)</option>
-            <option value="DX" ${examData.modality === 'DX' ? 'selected' : ''}>Radiografia Digital (RX)</option>
-            <option value="MG" ${examData.modality === 'MG' ? 'selected' : ''}>Mamografia Digital (MG)</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label style="font-size: 0.8rem; font-weight: 700;">Tipo Específico de Exame:</label>
-          <select id="wizExamType" class="form-select">
-            ${(examOptionsByModality[examData.modality] || []).map(opt => `
-              <option value="${opt}" ${opt === examData.examType ? 'selected' : ''}>${opt}</option>
-            `).join('')}
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label style="font-size: 0.8rem; font-weight: 700;">Lateralidade / Região Focada:</label>
-          <select id="wizLaterality" class="form-select">
-            <option value="N/A" ${examData.laterality === 'N/A' ? 'selected' : ''}>Não Aplicável / Exame Único</option>
-            <option value="DIREITA" ${examData.laterality === 'DIREITA' ? 'selected' : ''}>Direita (D)</option>
-            <option value="ESQUERDA" ${examData.laterality === 'ESQUERDA' ? 'selected' : ''}>Esquerda (E)</option>
-            <option value="BILATERAL" ${examData.laterality === 'BILATERAL' ? 'selected' : ''}>Bilateral (Ambos os lados)</option>
-          </select>
-        </div>
-      `;
-    } else if (step === 3) {
-      return `
-        <div class="glass-card" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.4rem; background: rgba(0,229,255,0.05); border-color: var(--primary-cyan);">
-          <div style="font-size: 0.75rem; color: var(--text-muted);">Confirmação da Admissão do Paciente:</div>
-          <div style="font-size: 1.15rem; font-weight: 700; color: #FFF;">${examData.patientName || 'PACIENTE NÃO INFORMADO'}</div>
-          <div style="font-size: 0.9rem; color: var(--primary-cyan); font-weight: 700;">${examData.examType} ${examData.laterality !== 'N/A' ? `(${examData.laterality})` : ''}</div>
-          <div style="font-size: 0.75rem; color: var(--text-muted);">
-            CPF: <strong>${examData.cpf || 'Não informado'}</strong> • Nascimento: <strong>${examData.birthDate || 'N/I'} (${examData.calculatedAge})</strong> • Sexo: <strong>${examData.gender}</strong>
-          </div>
-          <div style="font-size: 0.75rem; color: var(--text-muted);">Mãe: ${examData.motherName || 'Não informada'}</div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 0.75rem;">
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 0.75rem;">
           <div class="form-group">
-            <label style="font-size: 0.8rem; font-weight: 700;">Convênio Médico / Plano:</label>
-            <select id="wizAgreement" class="form-select">
-              <option value="Bradesco Saúde" ${examData.agreement === 'Bradesco Saúde' ? 'selected' : ''}>Bradesco Saúde</option>
-              <option value="Unimed Nacional" ${examData.agreement === 'Unimed Nacional' ? 'selected' : ''}>Unimed Nacional</option>
-              <option value="SulAmérica Saúde" ${examData.agreement === 'SulAmérica Saúde' ? 'selected' : ''}>SulAmérica Saúde</option>
-              <option value="Amil Assistência Médica" ${examData.agreement === 'Amil Assistência Médica' ? 'selected' : ''}>Amil Assistência Médica</option>
-              <option value="Porto Seguro Saúde" ${examData.agreement === 'Porto Seguro Saúde' ? 'selected' : ''}>Porto Seguro Saúde</option>
-              <option value="SUS - Sistema Único de Saúde" ${examData.agreement === 'SUS - Sistema Único de Saúde' ? 'selected' : ''}>SUS - Sistema Único de Saúde</option>
-              <option value="Particular / Dinheiro" ${examData.agreement === 'Particular / Dinheiro' ? 'selected' : ''}>Particular / Dinheiro</option>
+            <label>MODALIDADE DO EXAME:</label>
+            <select id="wModality" class="form-select">
+              <option value="US" ${form.modality === 'US' ? 'selected' : ''}>US — Ultrassonografia</option>
+              <option value="CT" ${form.modality === 'CT' ? 'selected' : ''}>CT — Tomografia Computadorizada</option>
+              <option value="MR" ${form.modality === 'MR' ? 'selected' : ''}>MR — Ressonância Magnética</option>
+              <option value="DX" ${form.modality === 'DX' ? 'selected' : ''}>DX — Raio-X Digital</option>
+              <option value="MG" ${form.modality === 'MG' ? 'selected' : ''}>MG — Mamografia Digital</option>
             </select>
           </div>
 
           <div class="form-group">
-            <label style="font-size: 0.8rem;">Número da Carteirinha:</label>
-            <input type="text" id="wizCardId" class="form-select" placeholder="Ex: 884.000.111-90" value="${examData.cardId}">
+            <label>DESCRIÇÃO DO EXAME (PROCEDIMENTO TUSS):</label>
+            <input type="text" id="wStudyDescription" class="form-select" value="${form.studyDescription}" placeholder="Ex: ULTRASSOM DE ABDÔMEN TOTAL">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group">
+            <label>LATERALIDADE:</label>
+            <select id="wLaterality" class="form-select">
+              <option value="N/A">N/A — Não Aplicável</option>
+              <option value="Direito">Direito (D)</option>
+              <option value="Esquerdo">Esquerdo (E)</option>
+              <option value="Bilateral">Bilateral (D/E)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>NÍVEL DE URGÊNCIA:</label>
+            <select id="wUrgency" class="form-select">
+              <option value="alta" ${form.urgency === 'alta' ? 'selected' : ''}>🔴 ALTA (Prioridade / UPA)</option>
+              <option value="media" ${form.urgency === 'media' ? 'selected' : ''}>🟡 MÉDIA (Atendimento Normal)</option>
+              <option value="baixa" ${form.urgency === 'baixa' ? 'selected' : ''}>🟢 BAIXA (Eletivo)</option>
+            </select>
           </div>
         </div>
 
         <div class="form-group">
-          <label style="font-size: 0.8rem; font-weight: 700;">Médico Solicitante / CRM:</label>
-          <input type="text" id="wizPhysician" class="form-select" value="${examData.physician}">
+          <label>MÉDICO SOLICITANTE / ASSISTENTE:</label>
+          <input type="text" id="wPhysician" class="form-select" value="${form.physician}" placeholder="Ex: Dr. Carlos Roberto de Mendonça">
+        </div>
+
+        <div class="form-group">
+          <label>INDICAÇÃO CLÍNICA / ANAMNESE:</label>
+          <textarea id="wClinicalHistory" class="form-select" style="height: 80px;">${form.clinicalHistory}</textarea>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+          <button class="btn-secondary" id="btnBackStep1">⬅️ Voltar ao Passo 1</button>
+          <button class="btn-primary" id="btnGoStep3" style="background: linear-gradient(135deg, #00E5FF 0%, #3B82F6 100%); border: none; font-weight: 700; padding: 0.6rem 1.25rem;">Avançar para Passo 3 ➔</button>
+        </div>
+      `;
+    } else if (step === 3) {
+      return `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group">
+            <label>CONVÊNIO / PLANO DE SAÚDE:</label>
+            <select id="wAgreement" class="form-select">
+              <option value="Bradesco Saúde" ${form.agreement === 'Bradesco Saúde' ? 'selected' : ''}>Bradesco Saúde S/A</option>
+              <option value="Unimed Nacional" ${form.agreement === 'Unimed Nacional' ? 'selected' : ''}>Unimed Nacional</option>
+              <option value="SulAmérica Saúde" ${form.agreement === 'SulAmérica Saúde' ? 'selected' : ''}>SulAmérica Saúde</option>
+              <option value="SUS" ${form.agreement === 'SUS' ? 'selected' : ''}>SUS — Sistema Único de Saúde</option>
+              <option value="Particular" ${form.agreement === 'Particular' ? 'selected' : ''}>Particular / Avulso</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>NÚMERO DA CARTEIRINHA / GUIA TISS:</label>
+            <input type="text" id="wCardId" class="form-select" value="${form.cardId}" placeholder="Ex: BRAD-8849-2026">
+          </div>
+        </div>
+
+        <div style="background: rgba(0, 229, 255, 0.05); border: 1px solid var(--primary-cyan); padding: 1rem; border-radius: 8px; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem;">
+          <h4 style="font-weight: 700; color: var(--primary-cyan); border-bottom: 1px solid var(--border-light); padding-bottom: 0.25rem;">
+            📋 RESUMO FINAL DA ADMISSÃO:
+          </h4>
+          <div><strong>PACIENTE:</strong> ${form.patientName || 'NÃO INFORMADO'} (${form.calculatedAge || 'Idade N/A'})</div>
+          <div><strong>CPF / PRONTUÁRIO:</strong> ${form.cpf ? `CPF: ${form.cpf}` : 'SEM CPF'}</div>
+          <div><strong>EXAME SELECIONADO:</strong> ${form.studyDescription} (${form.modality})</div>
+          <div><strong>CONVÊNIO:</strong> ${form.agreement} — Carteira: ${form.cardId}</div>
+          <div><strong>MÉDICO SOLICITANTE:</strong> ${form.physician}</div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+          <button class="btn-secondary" id="btnBackStep2">⬅️ Voltar ao Passo 2</button>
+          <button class="btn-primary" id="btnFinishWizard" style="background: var(--status-ready); border-color: var(--status-ready); font-weight: 700; padding: 0.65rem 1.5rem; font-size: 0.9rem;">
+            ✅ Confirmar Admissão & Gerar Exame no RIS
+          </button>
         </div>
       `;
     }
   }
 
-  function saveCurrentStepData() {
+  function attachStepEvents() {
     if (step === 1) {
-      const name = container.querySelector('#wizPatientName').value.trim();
-      if (!name) {
-        alert("⚠️ Por favor, informe o nome completo do paciente.");
-        return false;
-      }
-      examData.patientName = name;
-      examData.cpf = container.querySelector('#wizCpf').value.trim();
-      examData.rg = container.querySelector('#wizRg').value.trim();
-      examData.birthDate = container.querySelector('#wizBirthDate').value;
-      examData.gender = container.querySelector('#wizGender').value;
-      examData.motherName = container.querySelector('#wizMotherName').value.trim();
-      examData.phone = container.querySelector('#wizPhone').value.trim();
-
-      if (examData.cpf && !validateCPF(examData.cpf)) {
-        if (!confirm("⚠️ O CPF digitado não passou na validação dos dígitos verificadores. Deseja continuar assim mesmo para teste?")) {
-          return false;
+      container.querySelector('#wSelectExistingPatient')?.addEventListener('change', (e) => {
+        const idx = e.target.value;
+        if (idx !== "") {
+          const selected = samplePatients[idx];
+          form.patientName = selected.name;
+          form.cpf = selected.cpf || selected.id.replace('CPF: ', '');
+          form.calculatedAge = selected.age;
+          form.motherName = selected.mother || "MARIA DA SILVA";
+          form.phone = selected.phone || "(11) 99888-7766";
+          form.agreement = selected.agreement || "Bradesco Saúde";
+          render();
         }
-      }
-    } else if (step === 2) {
-      examData.modality = container.querySelector('#wizModality').value;
-      examData.examType = container.querySelector('#wizExamType').value;
-      examData.laterality = container.querySelector('#wizLaterality').value;
-    } else if (step === 3) {
-      examData.agreement = container.querySelector('#wizAgreement').value;
-      examData.cardId = container.querySelector('#wizCardId').value.trim();
-      examData.physician = container.querySelector('#wizPhysician').value.trim();
-    }
-    return true;
-  }
+      });
 
-  function attachStepInputEvents() {
-    if (step === 1) {
-      const dbSelect = container.querySelector('#selectDbPatient');
-      if (dbSelect) {
-        dbSelect.addEventListener('change', (e) => {
-          const selectedId = e.target.value;
-          if (selectedId) {
-            const found = state.customPatients.find(p => p.id === selectedId);
-            if (found) {
-              selectedExistingPatient = found;
-              examData.patientName = found.name;
-              examData.cpf = found.id.replace('CPF: ', '');
-              examData.birthDate = found.birthDate || '1990-05-15';
-              examData.calculatedAge = found.age || calculateAge(examData.birthDate);
-              examData.gender = found.gender || 'F';
-              examData.motherName = found.motherName || 'MÃE CADASTRADA';
-              examData.phone = found.phone || '(11) 98888-0000';
-              examData.agreement = found.agreement || 'Bradesco Saúde';
-              examData.cardId = found.cardId || '123456';
-              render();
+      const cpfInput = container.querySelector('#wCpf');
+      if (cpfInput) {
+        cpfInput.addEventListener('input', (e) => {
+          const formatted = formatCPF(e.target.value);
+          e.target.value = formatted;
+          form.cpf = formatted;
+          const badge = container.querySelector('#cpfValidationBadge');
+          if (badge) {
+            if (validateCPF(formatted)) {
+              badge.textContent = '✅ CPF VÁLIDO';
+              badge.style.color = '#10B981';
+            } else if (formatted.length >= 14) {
+              badge.textContent = '❌ CPF INVÁLIDO';
+              badge.style.color = '#EF4444';
+            } else {
+              badge.textContent = '';
             }
           }
         });
       }
 
-      const cpfInput = container.querySelector('#wizCpf');
-      if (cpfInput) {
-        cpfInput.addEventListener('input', (e) => {
-          examData.cpf = formatCPF(e.target.value);
-          e.target.value = examData.cpf;
-          render();
+      const birthInput = container.querySelector('#wBirthDate');
+      if (birthInput) {
+        birthInput.addEventListener('change', (e) => {
+          form.birthDate = e.target.value;
+          const age = calculateAge(e.target.value);
+          form.calculatedAge = age;
+          const ageInput = container.querySelector('#wCalculatedAge');
+          if (ageInput) ageInput.value = age;
         });
       }
 
-      const birthInput = container.querySelector('#wizBirthDate');
-      if (birthInput) {
-        birthInput.addEventListener('change', (e) => {
-          examData.birthDate = e.target.value;
-          examData.calculatedAge = calculateAge(e.target.value);
-          const ageCalculatedInput = container.querySelector('#wizAgeCalculated');
-          if (ageCalculatedInput) {
-            ageCalculatedInput.value = examData.calculatedAge;
-          }
-        });
-      }
+      container.querySelector('#btnGoStep2')?.addEventListener('click', () => {
+        form.patientName = container.querySelector('#wPatientName').value.trim();
+        form.cpf = container.querySelector('#wCpf').value.trim();
+        form.rg = container.querySelector('#wRg').value.trim();
+        form.motherName = container.querySelector('#wMotherName').value.trim();
+        form.phone = container.querySelector('#wPhone').value.trim();
+        form.gender = container.querySelector('#wGender').value;
+
+        if (!form.patientName) {
+          showToast("Por favor, informe o nome completo do paciente.", "warning");
+          return;
+        }
+
+        step = 2;
+        render();
+      });
     } else if (step === 2) {
-      const modalitySelect = container.querySelector('#wizModality');
-      if (modalitySelect) {
-        modalitySelect.addEventListener('change', (e) => {
-          examData.modality = e.target.value;
-          examData.examType = examOptionsByModality[examData.modality][0];
-          render();
-        });
-      }
+      container.querySelector('#btnBackStep1')?.addEventListener('click', () => {
+        step = 1;
+        render();
+      });
+
+      container.querySelector('#btnGoStep3')?.addEventListener('click', () => {
+        form.modality = container.querySelector('#wModality').value;
+        form.studyDescription = container.querySelector('#wStudyDescription').value.trim();
+        form.laterality = container.querySelector('#wLaterality').value;
+        form.urgency = container.querySelector('#wUrgency').value;
+        form.physician = container.querySelector('#wPhysician').value.trim();
+        form.clinicalHistory = container.querySelector('#wClinicalHistory').value.trim();
+
+        step = 3;
+        render();
+      });
+    } else if (step === 3) {
+      container.querySelector('#btnBackStep2')?.addEventListener('click', () => {
+        step = 2;
+        render();
+      });
+
+      container.querySelector('#btnFinishWizard')?.addEventListener('click', () => {
+        const agreement = container.querySelector('#wAgreement').value;
+        const cardId = container.querySelector('#wCardId').value.trim();
+
+        const newStudy = {
+          id: `EX-${Math.floor(10000 + Math.random() * 90000)}`,
+          patientName: form.patientName.toUpperCase(),
+          patientId: form.cpf ? `CPF: ${form.cpf}` : `PRONT-${Math.floor(1000 + Math.random() * 9000)}`,
+          age: form.calculatedAge || "40a",
+          gender: form.gender,
+          modality: form.modality,
+          studyDescription: form.studyDescription.toUpperCase(),
+          date: new Date().toISOString().slice(0, 16).replace('T', ' '),
+          modalitiesInStudy: [form.modality],
+          seriesCount: 1,
+          instanceCount: 12,
+          status: "pronto",
+          urgency: form.urgency,
+          physician: form.physician,
+          institution: "NEXUSRAD DIAGNÓSTICO POR IMAGEM",
+          accessionNumber: `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`,
+          agreement: agreement,
+          cardId: cardId
+        };
+
+        if (state.studies) {
+          state.studies.unshift(newStudy);
+        }
+
+        if (state.customPatients && !state.customPatients.find(p => p.name === newStudy.patientName)) {
+          state.customPatients.unshift({
+            id: newStudy.patientId,
+            name: newStudy.patientName,
+            age: newStudy.age,
+            gender: newStudy.gender,
+            phone: form.phone || "(11) 99888-7766",
+            agreement: agreement
+          });
+        }
+
+        showToast(`Exame de ${newStudy.patientName} gerado com sucesso!`, "success");
+        closeModal();
+
+        if (callbacks.onWizardComplete) callbacks.onWizardComplete(newStudy);
+      });
     }
+  }
+
+  function closeModal() {
+    const backdrop = container.querySelector('#wizardModalBackdrop');
+    if (backdrop) backdrop.remove();
   }
 
   render();

@@ -1,139 +1,124 @@
 // ==========================================================================
-// NexusRad AI - Interactive Appointment Scheduling Modal Component
+// NexusRad AI - Interactive Patient Appointment & TV Queue Modal
+// High-Visibility Close Button (✕) & Automatic Icon Render
 // ==========================================================================
 
-import { formatCPF, validateCPF, calculateAge } from '../utils/cpfValidator.js';
+import { showToast } from '../utils/toast.js';
+import { createIcons, X } from 'lucide';
 
 export function renderAppointmentModal(container, state, callbacks) {
   let form = {
     patientName: '',
     cpf: '',
-    phone: '',
     birthDate: '',
-    calculatedAge: '',
-    agreement: 'Bradesco Saúde',
     modality: 'US',
-    examType: 'ULTRASSOM DE ABDÔMEN TOTAL',
+    studyDescription: 'ULTRASSOM DE ABDÔMEN TOTAL',
     date: new Date().toISOString().slice(0, 10),
-    time: '14:30',
-    room: 'Sala 1 - Ultrassonografia 4D'
+    time: '09:30',
+    agreement: 'Bradesco Saúde',
+    physician: 'Dr. Carlos Roberto de Mendonça'
   };
 
-  if (!state.appointmentsList) {
-    state.appointmentsList = [];
+  const samplePatients = state.customPatients || [
+    { name: "CARLOS ALBERTO RODRIGUES", cpf: "123.456.789-00", agreement: "Bradesco Saúde" },
+    { name: "MARIA EDUARDA SILVA", cpf: "987.654.321-11", agreement: "Unimed Nacional" },
+    { name: "ERICK LIMA", cpf: "444.555.666-77", agreement: "SulAmérica" }
+  ];
+
+  function refreshModalIcons() {
+    createIcons({
+      icons: { X }
+    });
   }
 
   function render() {
     container.innerHTML = `
       <div class="modal-backdrop open" id="appointmentModalBackdrop">
-        <div class="modal-card" style="max-width: 650px; width: 92%; display: flex; flex-direction: column; gap: 1.25rem;">
+        <div class="modal-card" style="max-width: 580px; width: 92%; display: flex; flex-direction: column; gap: 1.25rem; background: #0A0F1D; border: 1px solid var(--primary-cyan); box-shadow: 0 0 30px rgba(0, 229, 255, 0.25);">
           
           <!-- Header -->
-          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); padding-bottom: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.75rem;">
             <div>
-              <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--primary-cyan); display: flex; align-items: center; gap: 0.5rem;">
-                <i data-lucide="calendar"></i>
-                Agendar Novo Exame / Consulta — Recepção
-              </h2>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">
-                Ao agendar, o paciente entra na Fila da Recepção e na Worklist do Médico Radiologista.
-              </span>
+              <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--primary-cyan);">
+                📅 Novo Agendamento de Exame
+              </h3>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                Agendar atendimento de paciente com emissão de senha para o Painel TV da Recepção.
+              </p>
             </div>
-            <button class="btn-icon" id="btnCloseAppModal" style="width: 28px; height: 28px;">
-              <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+
+            <!-- Crisp Visible Close Button (✕) -->
+            <button class="btn-icon modal-close-btn" id="btnCloseApptModal" title="Fechar Janela" style="background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border-light); color: #FFF; font-size: 1.2rem; font-weight: 700; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+              ✕
             </button>
           </div>
 
-          <!-- Form Body -->
+          <!-- Body -->
           <div style="display: flex; flex-direction: column; gap: 1rem;">
-            
-            <!-- Database Search Dropdown -->
-            <div style="background: rgba(0,229,255,0.05); border: 1px solid var(--primary-cyan); padding: 0.75rem 1rem; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 0.5rem;">
-              <label style="font-size: 0.8rem; font-weight: 700; color: var(--primary-cyan); display: flex; align-items: center; gap: 0.35rem;">
-                <i data-lucide="search" style="width: 14px; height: 14px;"></i>
-                Buscar Paciente Cadastrado no Banco:
+            <div style="background: rgba(0, 229, 255, 0.05); border: 1px solid var(--primary-cyan); padding: 0.75rem; border-radius: 8px; display: flex; flex-direction: column; gap: 0.4rem;">
+              <label style="font-size: 0.75rem; font-weight: 700; color: var(--primary-cyan);">
+                Buscar Paciente do Banco de Dados:
               </label>
-              <select id="appDbPatientSelect" class="form-select">
-                <option value="">-- Selecionar do Banco de Dados ou Cadastrar Abaixo --</option>
-                ${(state.customPatients || []).map(p => `
-                  <option value="${p.id}">${p.name} (${p.id})</option>
+              <select id="appSelectPatient" class="form-select">
+                <option value="">-- Selecionar Paciente ou Digitar Abaixo --</option>
+                ${samplePatients.map((p, i) => `
+                  <option value="${i}">👤 ${p.name} (${p.cpf || 'Sem CPF'})</option>
                 `).join('')}
               </select>
             </div>
 
-            <!-- Patient Info -->
             <div class="form-group">
-              <label style="font-size: 0.8rem; font-weight: 700;">Nome Completo do Paciente:</label>
-              <input type="text" id="appPatientName" class="form-select" placeholder="Ex: JOÃO DA SILVA ALMEIDA" value="${form.patientName}" required>
+              <label>NOME COMPLETO DO PACIENTE:</label>
+              <input type="text" id="appPatientName" class="form-select" value="${form.patientName}" placeholder="Ex: ERICK LIMA">
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
               <div class="form-group">
-                <label style="font-size: 0.8rem; font-weight: 700;">CPF do Paciente:</label>
-                <input type="text" id="appCpf" class="form-select" placeholder="000.000.000-00" value="${form.cpf}" maxlength="14">
+                <label>MODALIDADE:</label>
+                <select id="appModality" class="form-select">
+                  <option value="US">US — Ultrassonografia</option>
+                  <option value="CT">CT — Tomografia</option>
+                  <option value="MR">MR — Ressonância</option>
+                  <option value="DX">DX — Raio-X</option>
+                  <option value="MG">MG — Mamografia</option>
+                </select>
               </div>
 
               <div class="form-group">
-                <label style="font-size: 0.8rem; font-weight: 700;">Celular / WhatsApp:</label>
-                <input type="text" id="appPhone" class="form-select" placeholder="(11) 98888-7766" value="${form.phone}">
-              </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
-              <div class="form-group">
-                <label style="font-size: 0.8rem;">Data de Agendamento:</label>
-                <input type="date" id="appDate" class="form-select" value="${form.date}">
-              </div>
-
-              <div class="form-group">
-                <label style="font-size: 0.8rem;">Horário:</label>
-                <input type="time" id="appTime" class="form-select" value="${form.time}">
-              </div>
-
-              <div class="form-group">
-                <label style="font-size: 0.8rem;">Convênio Médico:</label>
+                <label>CONVÊNIO:</label>
                 <select id="appAgreement" class="form-select">
                   <option value="Bradesco Saúde">Bradesco Saúde</option>
                   <option value="Unimed Nacional">Unimed Nacional</option>
                   <option value="SulAmérica Saúde">SulAmérica Saúde</option>
-                  <option value="Amil Assistência Médica">Amil Assistência Médica</option>
-                  <option value="SUS">SUS - Sistema Único de Saúde</option>
-                  <option value="Particular">Particular / Dinheiro</option>
+                  <option value="SUS">SUS</option>
+                  <option value="Particular">Particular</option>
                 </select>
               </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 0.75rem;">
-              <div class="form-group">
-                <label style="font-size: 0.8rem; font-weight: 700;">Tipo de Exame / Procedimento:</label>
-                <select id="appExamType" class="form-select">
-                  <option value="ULTRASSOM DE ABDÔMEN TOTAL">ULTRASSOM DE ABDÔMEN TOTAL</option>
-                  <option value="ULTRASSOM OBSTÉTRICO COM DOPPLER">ULTRASSOM OBSTÉTRICO COM DOPPLER</option>
-                  <option value="ULTRASSOM PÉLVICO TRANSVAGINAL">ULTRASSOM PÉLVICO TRANSVAGINAL</option>
-                  <option value="TC DE TÓRAX COM CONTRASTE">TC DE TÓRAX COM CONTRASTE</option>
-                  <option value="RAIO-X DE TÓRAX PA E PERFIL">RAIO-X DE TÓRAX PA E PERFIL</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label style="font-size: 0.8rem; font-weight: 700;">Sala / Equipamento:</label>
-                <select id="appRoom" class="form-select">
-                  <option value="Sala 1 - Ultrassonografia 4D">Sala 1 - Ultrassonografia 4D</option>
-                  <option value="Sala 2 - Tomografia Computadorizada">Sala 2 - Tomografia Computadorizada</option>
-                  <option value="Sala 3 - Raio-X Digital">Sala 3 - Raio-X Digital</option>
-                  <option value="Sala 4 - Ressonância Magnética 1.5T">Sala 4 - Ressonância Magnética 1.5T</option>
-                </select>
-              </div>
+            <div class="form-group">
+              <label>PROCEDIMENTO / EXAME:</label>
+              <input type="text" id="appStudyDescription" class="form-select" value="${form.studyDescription}">
             </div>
 
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="form-group">
+                <label>DATA DO AGENDAMENTO:</label>
+                <input type="date" id="appDate" class="form-select" value="${form.date}">
+              </div>
+
+              <div class="form-group">
+                <label>HORÁRIO PREVISTO:</label>
+                <input type="time" id="appTime" class="form-select" value="${form.time}">
+              </div>
+            </div>
           </div>
 
           <!-- Footer -->
           <div style="display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
-            <button class="btn-secondary" id="btnCancelAppModal">Cancelar</button>
-            <button class="btn-primary" id="btnSaveAppointment" style="background: var(--status-ready); border-color: var(--status-ready); font-weight: 700;">
-              <i data-lucide="check-circle-2" style="width: 16px; height: 16px;"></i>
-              <span>Confirmar Agendamento</span>
+            <button class="btn-secondary" id="btnCancelAppt">Cancelar</button>
+            <button class="btn-primary" id="btnSaveAppt" style="background: var(--status-ready); border-color: var(--status-ready); font-weight: 700;">
+              Confirmar Agendamento & Emitir Senha
             </button>
           </div>
 
@@ -141,103 +126,67 @@ export function renderAppointmentModal(container, state, callbacks) {
       </div>
     `;
 
-    const backdrop = container.querySelector('#appointmentModalBackdrop');
-    const closeModal = () => backdrop.remove();
+    container.querySelector('#btnCloseApptModal')?.addEventListener('click', closeModal);
+    container.querySelector('#btnCancelAppt')?.addEventListener('click', closeModal);
 
-    container.querySelector('#btnCloseAppModal').addEventListener('click', closeModal);
-    container.querySelector('#btnCancelAppModal').addEventListener('click', closeModal);
-
-    // Database Search Dropdown Listener
-    container.querySelector('#appDbPatientSelect')?.addEventListener('change', (e) => {
-      const selectedId = e.target.value;
-      if (selectedId) {
-        const found = (state.customPatients || []).find(p => p.id === selectedId);
-        if (found) {
-          form.patientName = found.name;
-          form.cpf = found.id.replace('CPF: ', '');
-          form.phone = found.phone || '(11) 98888-0000';
-          form.agreement = found.agreement || 'Bradesco Saúde';
-          render();
-        }
+    container.querySelector('#appSelectPatient')?.addEventListener('change', (e) => {
+      const idx = e.target.value;
+      if (idx !== "") {
+        const p = samplePatients[idx];
+        container.querySelector('#appPatientName').value = p.name;
+        if (p.agreement) container.querySelector('#appAgreement').value = p.agreement;
       }
     });
 
-    container.querySelector('#appCpf')?.addEventListener('input', (e) => {
-      form.cpf = formatCPF(e.target.value);
-      e.target.value = form.cpf;
-    });
-
-    container.querySelector('#btnSaveAppointment').addEventListener('click', () => {
+    container.querySelector('#btnSaveAppt')?.addEventListener('click', () => {
       const name = container.querySelector('#appPatientName').value.trim();
       if (!name) {
-        alert("⚠️ Por favor, informe o nome do paciente para agendar.");
+        showToast("Por favor, informe o nome do paciente.", "warning");
         return;
       }
 
-      form.patientName = name.toUpperCase();
-      form.cpf = container.querySelector('#appCpf').value;
-      form.phone = container.querySelector('#appPhone').value;
-      form.date = container.querySelector('#appDate').value;
-      form.time = container.querySelector('#appTime').value;
-      form.agreement = container.querySelector('#appAgreement').value;
-      form.examType = container.querySelector('#appExamType').value;
-      form.room = container.querySelector('#appRoom').value;
+      const mod = container.querySelector('#appModality').value;
+      const desc = container.querySelector('#appStudyDescription').value.trim();
+      const dt = container.querySelector('#appDate').value;
+      const tm = container.querySelector('#appTime').value;
+      const ag = container.querySelector('#appAgreement').value;
 
-      const studyId = `EX-${Math.floor(10000 + Math.random() * 90000)}`;
-
-      const newApp = {
-        id: `AG-${Math.floor(10000 + Math.random() * 90000)}`,
-        studyId: studyId,
-        patientName: form.patientName,
-        cpf: form.cpf || '000.000.000-00',
-        patientId: `CPF: ${form.cpf || '000.000.000-00'}`,
-        phone: form.phone || '(11) 98888-0000',
-        time: `${form.time}`,
-        date: form.date,
-        examType: form.examType,
-        exam: form.examType,
-        modality: "US",
-        room: form.room,
-        agreement: form.agreement,
-        status: "AGENDADO",
-        accessionNumber: `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`
-      };
-
-      state.appointmentsList.unshift(newApp);
-
-      // AUTOMATICALLY CREATE STUDY IN WORKLIST RIS (state.studies)
       const newStudy = {
-        id: studyId,
-        patientName: form.patientName,
-        patientId: `CPF: ${form.cpf || '000.000.000-00'}`,
+        id: `EX-${Math.floor(10000 + Math.random() * 90000)}`,
+        patientName: name.toUpperCase(),
+        patientId: `CPF: ${Math.floor(100 + Math.random()*899)}.${Math.floor(100 + Math.random()*899)}.${Math.floor(100 + Math.random()*899)}-00`,
         age: "42a",
         gender: "M",
-        modality: "US",
-        studyDescription: form.examType,
-        date: `${form.date} ${form.time}`,
-        modalitiesInStudy: ["US"],
+        modality: mod,
+        studyDescription: desc.toUpperCase(),
+        date: `${dt} ${tm}`,
+        modalitiesInStudy: [mod],
         seriesCount: 1,
         instanceCount: 1,
-        status: "pronto",
-        urgency: "normal",
-        physician: "Dr. Plantonista Radiologia",
+        status: "agendado",
+        urgency: "media",
+        physician: "Dr. Carlos Roberto de Mendonça",
         institution: "NEXUSRAD DIAGNÓSTICO POR IMAGEM",
-        accessionNumber: newApp.accessionNumber,
-        capturedFrames: []
+        accessionNumber: `ACC-2026-${Math.floor(10000 + Math.random() * 90000)}`,
+        agreement: ag
       };
 
-      state.studies.unshift(newStudy);
-      if (state.filteredStudies) {
-        state.filteredStudies.unshift(newStudy);
+      if (state.studies) {
+        state.studies.unshift(newStudy);
       }
 
+      showToast(`Agendamento de ${name.toUpperCase()} realizado com sucesso!`, "success");
       closeModal();
-      alert(`✅ Agendamento de ${form.patientName} realizado com sucesso!\n\n1. Entrou na Tabela da Recepção (Menu Agenda).\n2. Criado na Fila Worklist RIS do Médico Radiologista.`);
-      
-      if (callbacks.onAppointmentSaved) {
-        callbacks.onAppointmentSaved(newApp);
-      }
+
+      if (callbacks.onAppointmentSaved) callbacks.onAppointmentSaved(newStudy);
     });
+
+    refreshModalIcons();
+  }
+
+  function closeModal() {
+    const backdrop = container.querySelector('#appointmentModalBackdrop');
+    if (backdrop) backdrop.remove();
   }
 
   render();
