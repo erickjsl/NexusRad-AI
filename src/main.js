@@ -21,7 +21,7 @@ import { renderPatientPortalPage } from './components/PatientPortalPage.js';
 import { renderCrudManagement } from './components/CrudManagement.js';
 import { renderMedicalRecordPage } from './components/MedicalRecordPage.js';
 import { renderDashboard } from './components/Dashboard.js';
-import { loadPersistentState, saveStudiesToStorage } from './utils/storage.js';
+import { loadPersistentState, saveStudiesToStorage, ensurePatientSaved } from './utils/storage.js';
 import { showToast } from './utils/toast.js';
 
 // State
@@ -440,6 +440,7 @@ function handleNewUpload(importedStudy) {
 
   state.studies.unshift(newStudy);
   state.selectedStudyId = newStudy.id;
+  ensurePatientSaved(state, newStudy);
   saveStudiesToStorage(state.studies);
   applyFilters();
 

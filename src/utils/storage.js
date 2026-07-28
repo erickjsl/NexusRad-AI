@@ -190,6 +190,35 @@ export function loadPersistentState(state) {
   }
 }
 
+export function ensurePatientSaved(state, item) {
+  if (!state || !item || (!item.patientName && !item.name)) return;
+
+  if (!state.customPatients) {
+    state.customPatients = [];
+  }
+
+  const pName = (item.patientName || item.name).trim().toUpperCase();
+  const pId = item.patientId || item.id;
+
+  const existingIndex = state.customPatients.findIndex(p => 
+    p.name.trim().toUpperCase() === pName || (pId && p.id === pId)
+  );
+
+  if (existingIndex < 0) {
+    const newPatient = {
+      id: pId || `CPF: ${Math.floor(100 + Math.random()*899)}.${Math.floor(100 + Math.random()*899)}.${Math.floor(100 + Math.random()*899)}-00`,
+      name: pName,
+      age: item.age || "38a",
+      gender: item.gender || "M",
+      phone: item.phone || "(11) 99888-7766",
+      agreement: item.agreement || "Bradesco Saúde"
+    };
+
+    state.customPatients.unshift(newPatient);
+    savePatientsToStorage(state.customPatients);
+  }
+}
+
 export function saveStudiesToStorage(studies) {
   // Also save full-resolution frames asynchronously to IndexedDB
   studies.forEach(s => {
