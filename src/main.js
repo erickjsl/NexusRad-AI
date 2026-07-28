@@ -4,7 +4,7 @@
 // ==========================================================================
 
 import './style.css';
-import { createIcons, Activity, Search, ListFilter, Eye, FileText, UploadCloud, Sun, Ruler, CircleDot, ZoomIn, Move, Contrast, RotateCcw, RotateCw, Play, Pause, Sparkles, FileCheck2, Mic, Save, Printer, ShieldCheck, RadioReceiver, X, FolderOpen, Inbox, Columns, Loader, User, Lock, LogIn, LogOut, Calendar, CreditCard, Settings, UserPlus, Download, Building, Camera, Power, Video, Globe, ArrowLeft, ArrowRight, Share2, Send, Clock, Maximize2, Columns2, Keyboard, Edit, Trash2, DollarSign, LayoutDashboard, FilePlus, Triangle, ArrowUpRight, History, UserCheck, Key, BarChart2 } from 'lucide';
+import { createIcons, Activity, Search, ListFilter, Eye, FileText, UploadCloud, Sun, Ruler, CircleDot, ZoomIn, Move, Contrast, RotateCcw, RotateCw, Play, Pause, Sparkles, FileCheck2, Mic, Save, Printer, ShieldCheck, RadioReceiver, X, FolderOpen, Inbox, Columns, Loader, User, Lock, LogIn, LogOut, Calendar, CreditCard, Settings, UserPlus, Download, Building, Camera, Power, Video, Globe, ArrowLeft, ArrowRight, Share2, Send, Clock, Maximize2, Columns2, Keyboard, Edit, Trash2, DollarSign, LayoutDashboard, FilePlus, Triangle, ArrowUpRight, History, UserCheck, Key, BarChart2, ChevronUp, ChevronDown } from 'lucide';
 import { MOCK_WORKLIST } from './data/mockData.js';
 import { renderHeader } from './components/Header.js';
 import { renderWorklist } from './components/Worklist.js';
@@ -24,6 +24,7 @@ import { renderDashboard } from './components/Dashboard.js';
 const state = {
   currentUser: DEMO_USERS[0],
   isAuthenticated: true,
+  headerCollapsed: false,
   studies: [...MOCK_WORKLIST],
   filteredStudies: [...MOCK_WORKLIST],
   activeModality: 'TODOS',
@@ -125,6 +126,30 @@ function init() {
       state.currentUser = user;
       init();
     },
+    onToggleCollapseHeader: (collapsed) => {
+      state.headerCollapsed = collapsed;
+      renderHeader(document.querySelector('#headerContainer'), state, {
+        onSearch: handleSearch,
+        onSelectModality: handleSelectModality,
+        onOpenUpload: openUploadModal,
+        onWizardComplete: (newStudy) => {
+          state.selectedStudyId = newStudy.id;
+          applyFilters();
+          switchView('worklist');
+        },
+        onSelectUserRole: (user) => {
+          state.currentUser = user;
+          init();
+        },
+        onToggleCollapseHeader: (c) => {
+          state.headerCollapsed = c;
+          init();
+        },
+        onGoHome: () => switchView('worklist'),
+        onLogout: handleLogout
+      });
+      refreshIcons();
+    },
     onGoHome: () => switchView('worklist'),
     onLogout: handleLogout
   });
@@ -190,7 +215,7 @@ function handleLogout() {
 function refreshIcons() {
   createIcons({
     icons: {
-      Activity, Search, ListFilter, Eye, FileText, UploadCloud, Sun, Ruler, CircleDot, ZoomIn, Move, Contrast, RotateCcw, RotateCw, Play, Pause, Sparkles, FileCheck2, Mic, Save, Printer, ShieldCheck, RadioReceiver, X, FolderOpen, Inbox, Columns, Loader, User, Lock, LogIn, LogOut, Calendar, CreditCard, Settings, UserPlus, Download, Building, Camera, Power, Video, Globe, ArrowLeft, ArrowRight, Share2, Send, Clock, Maximize2, Columns2, Keyboard, Edit, Trash2, DollarSign, LayoutDashboard, FilePlus, Triangle, ArrowUpRight, History, UserCheck, Key, BarChart2
+      Activity, Search, ListFilter, Eye, FileText, UploadCloud, Sun, Ruler, CircleDot, ZoomIn, Move, Contrast, RotateCcw, RotateCw, Play, Pause, Sparkles, FileCheck2, Mic, Save, Printer, ShieldCheck, RadioReceiver, X, FolderOpen, Inbox, Columns, Loader, User, Lock, LogIn, LogOut, Calendar, CreditCard, Settings, UserPlus, Download, Building, Camera, Power, Video, Globe, ArrowLeft, ArrowRight, Share2, Send, Clock, Maximize2, Columns2, Keyboard, Edit, Trash2, DollarSign, LayoutDashboard, FilePlus, Triangle, ArrowUpRight, History, UserCheck, Key, BarChart2, ChevronUp, ChevronDown
     }
   });
 }
@@ -231,6 +256,10 @@ function handleSelectModality(modality) {
     },
     onSelectUserRole: (user) => {
       state.currentUser = user;
+      init();
+    },
+    onToggleCollapseHeader: (c) => {
+      state.headerCollapsed = c;
       init();
     },
     onGoHome: () => switchView('worklist'),

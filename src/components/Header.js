@@ -1,5 +1,5 @@
 // ==========================================================================
-// NexusRad AI - Header Navigation Component with Auth User Info & RBAC Role Switcher
+// NexusRad AI - Collapsible Top Header Navigation (Maximizes DICOM Workspace)
 // ==========================================================================
 
 import { renderNewExamWizardModal } from './NewExamWizardModal.js';
@@ -7,10 +7,11 @@ import { DEMO_USERS } from './LoginModal.js';
 
 export function renderHeader(container, state, callbacks) {
   const user = state.currentUser || DEMO_USERS[0];
+  const isCollapsed = state.headerCollapsed || false;
 
   container.innerHTML = `
-    <header class="app-header">
-      <div class="brand-container" id="brandBtn">
+    <header class="app-header ${isCollapsed ? 'collapsed' : ''}" style="${isCollapsed ? 'display: none;' : ''}">
+      <div class="brand-container" id="brandBtn" title="Ir para a Central de Laudos (Worklist)">
         <div class="brand-icon">
           <i data-lucide="activity"></i>
         </div>
@@ -63,8 +64,21 @@ export function renderHeader(container, state, callbacks) {
             <i data-lucide="log-out" style="width: 16px; height: 16px;"></i>
           </button>
         </div>
+
+        <!-- Collapse Header Button -->
+        <button id="btnCollapseHeader" class="btn-secondary" style="padding: 0.35rem; border-radius: 6px;" title="Ocultar Cabeçalho Superior (Maximizar Área do Viewer)">
+          <i data-lucide="chevron-up" style="width: 16px; height: 16px; color: var(--primary-cyan);"></i>
+        </button>
       </div>
     </header>
+
+    <!-- Floating Expand Button when Header is Collapsed -->
+    ${isCollapsed ? `
+      <button id="btnExpandHeader" style="position: fixed; top: 0.5rem; right: 1rem; z-index: 999; background: var(--bg-card); border: 1px solid var(--primary-cyan); color: var(--primary-cyan); padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(0,229,255,0.2); display: flex; align-items: center; gap: 0.35rem;">
+        <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+        <span>Exibir Menu Superior</span>
+      </button>
+    ` : ''}
   `;
 
   // Attach event listeners
@@ -116,4 +130,12 @@ export function renderHeader(container, state, callbacks) {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', callbacks.onLogout);
   }
+
+  container.querySelector('#btnCollapseHeader')?.addEventListener('click', () => {
+    if (callbacks.onToggleCollapseHeader) callbacks.onToggleCollapseHeader(true);
+  });
+
+  container.querySelector('#btnExpandHeader')?.addEventListener('click', () => {
+    if (callbacks.onToggleCollapseHeader) callbacks.onToggleCollapseHeader(false);
+  });
 }
