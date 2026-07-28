@@ -1,6 +1,7 @@
 // ==========================================================================
 // NexusRad AI - LocalStorage Persistence Engine
 // Ensures all Patients, Exams, Appointments, Templates & CRUD data are saved permanently
+// Includes QuotaExceededError Prevention & Image Frame Sanitization
 // ==========================================================================
 
 import { MOCK_WORKLIST, MOCK_TEMPLATES } from '../data/mockData.js';
@@ -13,6 +14,21 @@ const STORAGE_KEYS = {
   AGREEMENTS: 'nexusrad_agreements',
   SETTINGS: 'nexusrad_settings'
 };
+
+function prepareStudiesForStorage(studies) {
+  return studies.map(s => {
+    const clone = { ...s };
+    // Remove heavy binary objects (pixelData ArrayBuffers) to prevent LocalStorage quota overflow
+    delete clone.rawDicomObject;
+
+    if (clone.capturedFrames && clone.capturedFrames.length > 0) {
+      // Keep up to 12 frames per study to stay well within 5MB browser storage limits
+      clone.capturedFrames = clone.capturedFrames.slice(-12);
+    }
+
+    return clone;
+  });
+}
 
 export function loadPersistentState(state) {
   try {
@@ -98,9 +114,27 @@ export function loadPersistentState(state) {
 
 export function saveStudiesToStorage(studies) {
   try {
-    localStorage.setItem(STORAGE_KEYS.STUDIES, JSON.stringify(studies));
+    const clean = prepareStudiesForStorage(studies);
+    localStorage.setItem(STORAGE_KEYS.STUDIES, JSON.stringify(clean));
   } catch (err) {
-    console.error("Error saving studies to localStorage:", err);
+    if (err.name === 'QuotaExceededError' || err.code === 22) {
+      console.warn("Storage quota exceeded. Pruning older captured frames for storage...");
+      try {
+        const ultraClean = studies.map(s => {
+          const clone = { ...s };
+          delete clone.rawDicomObject;
+          if (clone.capturedFrames) {
+            clone.capturedFrames = clone.capturedFrames.slice(-5); // Keep latest 5 frames
+          }
+          return clone;
+        });
+        localStorage.setItem(STORAGE_KEYS.STUDIES, JSON.stringify(ultraClean));
+      } catch (innerErr) {
+        console.error("Critical storage quota reached:", innerErr);
+      }
+    } else {
+      console.error("Error saving studies to localStorage:", err);
+    }
   }
 }
 

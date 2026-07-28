@@ -5,7 +5,8 @@
 // ==========================================================================
 
 import './style.css';
-import { createIcons, Activity, Search, ListFilter, Eye, FileText, UploadCloud, Sun, Ruler, CircleDot, ZoomIn, Move, Contrast, RotateCcw, RotateCw, Play, Pause, Sparkles, FileCheck2, Mic, Save, Printer, ShieldCheck, RadioReceiver, X, FolderOpen, Inbox, Columns, Loader, User, Lock, LogIn, LogOut, Calendar, CreditCard, Settings, UserPlus, Download, Building, Camera, Power, Video, Globe, ArrowLeft, ArrowRight, Share2, Send, Clock, Maximize2, Columns2, Keyboard, Edit, Trash2, DollarSign, LayoutDashboard, FilePlus, Triangle, ArrowUpRight, History, UserCheck, Key, BarChart2, ChevronUp, ChevronDown, LockKeyhole } from 'lucide';
+import { createIcons } from 'lucide';
+import * as LucideIcons from 'lucide';
 import { MOCK_WORKLIST } from './data/mockData.js';
 import { renderHeader } from './components/Header.js';
 import { renderWorklist } from './components/Worklist.js';
@@ -236,9 +237,7 @@ function handleLogout() {
 
 function refreshIcons() {
   createIcons({
-    icons: {
-      Activity, Search, ListFilter, Eye, FileText, UploadCloud, Sun, Ruler, CircleDot, ZoomIn, Move, Contrast, RotateCcw, RotateCw, Play, Pause, Sparkles, FileCheck2, Mic, Save, Printer, ShieldCheck, RadioReceiver, X, FolderOpen, Inbox, Columns, Loader, User, Lock, LogIn, LogOut, Calendar, CreditCard, Settings, UserPlus, Download, Building, Camera, Power, Video, Globe, ArrowLeft, ArrowRight, Share2, Send, Clock, Maximize2, Columns2, Keyboard, Edit, Trash2, DollarSign, LayoutDashboard, FilePlus, Triangle, ArrowUpRight, History, UserCheck, Key, BarChart2, ChevronUp, ChevronDown, LockKeyhole
-    }
+    icons: LucideIcons
   });
 }
 
