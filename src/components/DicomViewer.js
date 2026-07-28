@@ -1,9 +1,12 @@
 // ==========================================================================
-// NexusRad AI - Professional Organized Radiology & Ultrasound Viewer Engine
+// NexusRad AI - Professional Radiology & Ultrasound Viewer Engine
+// Includes Live Video Capture, External Device Photo Import & Auto-Save
 // ==========================================================================
 
 import { renderDicomSlice } from '../utils/dicomGenerator.js';
 import { renderRawDicomToCanvas } from '../utils/dicomParser.js';
+import { showToast } from '../utils/toast.js';
+import { saveStudiesToStorage } from '../utils/storage.js';
 
 let activeMediaStream = null;
 
@@ -42,7 +45,7 @@ export function renderDicomViewer(container, study, state, callbacks) {
   container.innerHTML = `
     <div class="dicom-pane" style="height: 100%; border-right: none; display: flex; flex-direction: column; background: #000; user-select: none;">
       
-      <!-- Clean Organized Toolbar Top (Grouped Sections) -->
+      <!-- Clean Organized Toolbar Top -->
       <div class="viewer-toolbar" style="padding: 0.5rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid var(--border-light); flex-wrap: wrap;">
         
         <!-- Group 1: Image Manipulation -->
@@ -54,7 +57,7 @@ export function renderDicomViewer(container, study, state, callbacks) {
             <span>Janelamento</span>
           </button>
           
-          <select class="window-select" id="presetSelect" style="font-size: 0.7rem; padding: 0.25rem 0.5rem;">
+          <select class="window-select" id="presetSelect" style="font-size: 0.7rem; padding: 0.25rem 0.5rem; background: #0F172A; color: #FFF;">
             <option value="default">Janela Padrão</option>
             <option value="lung" ${study.modality === 'CT' ? 'selected' : ''}>Pulmão</option>
             <option value="bone">Osso</option>
@@ -67,7 +70,7 @@ export function renderDicomViewer(container, study, state, callbacks) {
             <span>Zoom</span>
           </button>
 
-          <button class="tool-btn ${activeTool === 'pan' ? 'active' : ''}" id="toolPan" title="Pan">
+          <button class="tool-btn ${activeTool === 'zoom' ? 'active' : ''}" id="toolPan" title="Pan">
             <i data-lucide="move" style="width: 15px; height: 15px;"></i>
             <span>Pan</span>
           </button>
@@ -96,17 +99,17 @@ export function renderDicomViewer(container, study, state, callbacks) {
 
           <button class="tool-btn ${activeTool === 'line' ? 'active' : ''}" id="toolLine" title="Medir Distância (mm)">
             <i data-lucide="ruler" style="width: 15px; height: 15px;"></i>
-            <span>Régua (mm)</span>
+            <span>Régua</span>
           </button>
 
           <button class="tool-btn ${activeTool === 'angle' ? 'active' : ''}" id="toolAngle" title="Medir Ângulo (°)">
             <i data-lucide="triangle" style="width: 15px; height: 15px;"></i>
-            <span>Ângulo (°)</span>
+            <span>Ângulo</span>
           </button>
 
           <button class="tool-btn ${activeTool === 'roi' ? 'active' : ''}" id="toolRoi" title="Área ROI (HU)">
             <i data-lucide="circle-dot" style="width: 15px; height: 15px;"></i>
-            <span>ROI (HU)</span>
+            <span>ROI</span>
           </button>
 
           <button class="tool-btn ${activeTool === 'arrow' ? 'active' : ''}" id="toolArrow" title="Anotar Seta">
@@ -117,26 +120,27 @@ export function renderDicomViewer(container, study, state, callbacks) {
 
         <div style="height: 20px; width: 1px; background: var(--border-light);"></div>
 
-        <!-- Group 3: Capture & Screens -->
+        <!-- Group 3: Capture, Import & Save Actions -->
         <div style="display: flex; align-items: center; gap: 0.35rem;">
-          <button class="tool-btn" id="btnVideoCapture" style="border-color: var(--primary-cyan); background: rgba(0,229,255,0.1);">
+          <button class="tool-btn" id="btnVideoCapture" style="border-color: var(--primary-cyan); background: rgba(0,229,255,0.1);" title="Placa de Captura / Câmera Externa US">
             <i data-lucide="video" style="width: 15px; height: 15px; color: var(--primary-cyan);"></i>
             <span style="color: var(--primary-cyan); font-weight: 700;">Vídeo US</span>
           </button>
 
-          <button class="tool-btn" id="btnManualSnap" style="background: rgba(16, 185, 129, 0.15); border-color: var(--status-ready);">
+          <button class="tool-btn" id="btnManualSnap" style="background: rgba(16, 185, 129, 0.15); border-color: var(--status-ready);" title="Tirar Foto Instantânea do Exame">
             <i data-lucide="camera" style="width: 15px; height: 15px; color: var(--status-ready);"></i>
-            <span style="color: var(--status-ready); font-weight: 700;">📸 Foto</span>
+            <span style="color: var(--status-ready); font-weight: 700;">📸 Tirar Foto</span>
           </button>
 
-          <button class="tool-btn" id="btnNavReport" title="Ir para a Tela de Laudo">
-            <i data-lucide="file-text" style="width: 15px; height: 15px; color: var(--primary-cyan);"></i>
-            <span>Laudo</span>
+          <button class="tool-btn" id="btnImportExternalPhoto" style="background: rgba(59, 130, 246, 0.15); border-color: #3B82F6;" title="Importar Fotos Tiradas em Dispositivos Externos ou Câmeras">
+            <i data-lucide="upload-cloud" style="width: 15px; height: 15px; color: #3B82F6;"></i>
+            <span style="color: #60A5FA; font-weight: 700;">📁 Importar Fotos</span>
           </button>
+          <input type="file" id="fileExternalPhoto" accept="image/*" multiple style="display: none;">
 
-          <button class="tool-btn" id="btnNavSplit" title="Modo Dividido">
-            <i data-lucide="columns-2" style="width: 15px; height: 15px;"></i>
-            <span>Dividido</span>
+          <button class="tool-btn" id="btnSaveViewer" style="background: var(--status-ready); border-color: var(--status-ready); color: #000; font-weight: 700;" title="Salvar Exame e Fotos no Banco Permanente">
+            <i data-lucide="save" style="width: 15px; height: 15px; color: #000;"></i>
+            <span>💾 Salvar Tudo</span>
           </button>
         </div>
 
@@ -146,17 +150,17 @@ export function renderDicomViewer(container, study, state, callbacks) {
       <div id="videoControlBar" style="display: none; background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid var(--border-active); padding: 0.5rem 1rem; align-items: center; justify-content: space-between; z-index: 30;">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <span style="font-size: 0.75rem; font-weight: 700; color: var(--status-ready); display: flex; align-items: center; gap: 0.35rem;">
-            <span class="status-dot"></span> TRANSMISSÃO DE VÍDEO ULTRASSOM AO VIVO (60FPS)
+            <span class="status-dot"></span> TRANSMISSÃO AO VIVO DE DISPOSITIVO EXTERNO / PLACA DE CAPTURA
           </span>
-          <select id="videoSourceSelect" class="window-select" style="font-size: 0.7rem; max-width: 220px;">
-            <option value="">Selecione a Placa de Captura...</option>
+          <select id="videoSourceSelect" class="window-select" style="font-size: 0.7rem; max-width: 220px; background: #0F172A; color: #FFF;">
+            <option value="">Selecione o Dispositivo Externo...</option>
           </select>
         </div>
 
         <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <button class="btn-primary" id="btnSnapFrame" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;">
+          <button class="btn-primary" id="btnSnapFrame" style="font-size: 0.75rem; padding: 0.35rem 0.75rem; background: var(--status-ready); border-color: var(--status-ready); font-weight: 700;">
             <i data-lucide="camera" style="width: 14px; height: 14px;"></i>
-            <span>📸 Capturar Imagem DICOM</span>
+            <span>📸 Capturar & Salvar Foto</span>
           </button>
           <button class="btn-secondary" id="btnStopVideo" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;">
             <i data-lucide="power" style="width: 14px; height: 14px; color: #EF4444;"></i>
@@ -193,8 +197,8 @@ export function renderDicomViewer(container, study, state, callbacks) {
           </div>
 
           <div class="hud-overlay hud-bottom-right">
-            <div><strong>FOTOS CAPTURADAS:</strong> <span id="hudCapturesCount" style="color: var(--primary-cyan); font-weight: 700;">${study.capturedFrames.length}</span></div>
-            <div><strong>STATUS:</strong> DICOM 3.0 OK</div>
+            <div><strong>FOTOS SALVAS:</strong> <span id="hudCapturesCount" style="color: var(--status-ready); font-weight: 700;">${study.capturedFrames.length}</span></div>
+            <div><strong>SITUAÇÃO:</strong> ARMAZENAMENTO ATIVO</div>
           </div>
         </div>
 
@@ -207,24 +211,18 @@ export function renderDicomViewer(container, study, state, callbacks) {
         ` : ''}
       </div>
 
-      <!-- ULTRASOUND CAPTURE FILMSTRIP GALLERY -->
-      <div id="filmstripContainer" style="background: #070A11; border-top: 1px solid var(--border-light); padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.75rem; overflow-x: auto; min-height: 100px;">
-        <div style="font-size: 0.7rem; font-weight: 700; color: var(--primary-cyan); display: flex; flex-direction: column; gap: 0.2rem; min-width: 100px;">
+      <!-- ULTRASOUND & EXTERNAL DEVICE CAPTURE FILMSTRIP GALLERY -->
+      <div id="filmstripContainer" style="background: #070A11; border-top: 1px solid var(--border-light); padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.75rem; overflow-x: auto; min-height: 105px;">
+        <div style="font-size: 0.7rem; font-weight: 700; color: var(--primary-cyan); display: flex; flex-direction: column; gap: 0.2rem; min-width: 130px;">
           <span>🖼️ FOTOS DO EXAME</span>
-          <span style="font-size: 0.65rem; color: var(--text-muted);" id="filmstripLabel">(${study.capturedFrames.length} capturas)</span>
+          <span style="font-size: 0.65rem; color: var(--status-ready); font-weight: 700;" id="filmstripLabel">(${study.capturedFrames.length} salvas)</span>
+          <button id="btnQuickImportFooter" style="font-size: 0.65rem; padding: 2px 6px; background: rgba(0,229,255,0.15); border: 1px solid var(--primary-cyan); color: var(--primary-cyan); border-radius: 4px; cursor: pointer; margin-top: 4px; font-weight: 700;">
+            + Adicionar Foto
+          </button>
         </div>
 
         <div id="filmstripGallery" style="display: flex; gap: 0.5rem; align-items: center; flex: 1; overflow-x: auto;">
-          ${study.capturedFrames.length === 0 ? `
-            <div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">
-              Nenhuma imagem capturada ainda. Clique em "📸 Foto" para registrar imagens deste exame.
-            </div>
-          ` : study.capturedFrames.map((frame, idx) => `
-            <div class="filmstrip-item" data-index="${idx}" style="position: relative; width: 80px; height: 80px; background: #000; border: 2px solid var(--primary-cyan); border-radius: 6px; overflow: hidden; cursor: pointer; flex-shrink: 0;">
-              <img src="${frame.dataUrl}" style="width: 100%; height: 100%; object-fit: cover;">
-              <span style="position: absolute; bottom: 2px; right: 2px; font-size: 0.6rem; background: rgba(0,0,0,0.8); color: #FFF; padding: 1px 4px; border-radius: 3px; font-weight: 700;">#${idx + 1}</span>
-            </div>
-          `).join('')}
+          <!-- Items auto-rendered -->
         </div>
       </div>
 
@@ -240,7 +238,7 @@ export function renderDicomViewer(container, study, state, callbacks) {
   const hudWl = container.querySelector('#hudWl');
   const hudZoom = container.querySelector('#hudZoom');
   const hudActiveToolName = container.querySelector('#hudActiveToolName');
-  const hudMeasurementsCount = container.querySelector('#hudMeasurementsCount');
+  const hudCapturesCount = container.querySelector('#hudCapturesCount');
   const filmstripGallery = container.querySelector('#filmstripGallery');
   const filmstripLabel = container.querySelector('#filmstripLabel');
 
@@ -303,38 +301,56 @@ export function renderDicomViewer(container, study, state, callbacks) {
     if (hudWl) hudWl.textContent = Math.round(windowLevel);
     if (hudZoom) hudZoom.textContent = `${(zoom * 100).toFixed(0)}%`;
     if (hudActiveToolName) hudActiveToolName.textContent = activeTool;
-    if (hudMeasurementsCount) hudMeasurementsCount.textContent = measurements.length;
-    if (filmstripLabel) filmstripLabel.textContent = `(${study.capturedFrames.length} capturas)`;
+    if (hudCapturesCount) hudCapturesCount.textContent = study.capturedFrames.length;
+    if (filmstripLabel) filmstripLabel.textContent = `(${study.capturedFrames.length} salvas)`;
   }
 
-  function addCapturedFrame(dataUrl) {
-    study.capturedFrames.push({
-      id: `FRAME-${Date.now()}`,
+  function addCapturedFrame(dataUrl, sourceName = "DISPOSITIVO EXTERNO") {
+    const newFrame = {
+      id: `FRAME-${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       dataUrl: dataUrl,
+      source: sourceName,
       timestamp: new Date().toLocaleTimeString()
-    });
+    };
 
+    study.capturedFrames.push(newFrame);
     study.instanceCount += 1;
+
+    // SAVE INSTANTLY TO LOCALSTORAGE
+    saveStudiesToStorage(state.studies);
+
     updateFilmstripUI();
     updateRender();
+
+    showToast(`📸 Foto #${study.capturedFrames.length} salva com sucesso no exame do paciente!`, "success");
   }
 
   function updateFilmstripUI() {
     if (!filmstripGallery) return;
 
+    if (study.capturedFrames.length === 0) {
+      filmstripGallery.innerHTML = `
+        <div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic; display: flex; align-items: center; gap: 0.5rem;">
+          <span>Nenhuma imagem capturada. Clique em <strong>"📸 Tirar Foto"</strong> ou <strong>"📁 Importar Fotos"</strong> para adicionar imagens.</span>
+        </div>
+      `;
+      return;
+    }
+
     filmstripGallery.innerHTML = study.capturedFrames.map((frame, idx) => `
-      <div class="filmstrip-item" data-index="${idx}" style="position: relative; width: 80px; height: 80px; background: #000; border: 2px solid var(--primary-cyan); border-radius: 6px; overflow: hidden; cursor: pointer; flex-shrink: 0;">
+      <div class="filmstrip-item" data-index="${idx}" style="position: relative; width: 80px; height: 80px; background: #000; border: 2px solid var(--primary-cyan); border-radius: 6px; overflow: hidden; cursor: pointer; flex-shrink: 0;" title="Foto #${idx + 1} - Clique para exibir no monitor">
         <img src="${frame.dataUrl}" style="width: 100%; height: 100%; object-fit: cover;">
         <span style="position: absolute; bottom: 2px; right: 2px; font-size: 0.6rem; background: rgba(0,0,0,0.8); color: #FFF; padding: 1px 4px; border-radius: 3px; font-weight: 700;">#${idx + 1}</span>
+        
+        <button class="btn-delete-frame" data-index="${idx}" title="Excluir Foto" style="position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; background: rgba(239,68,68,0.9); border: none; border-radius: 3px; color: #FFF; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+          ✕
+        </button>
       </div>
-    `).join('') || `
-      <div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">
-        Nenhuma imagem capturada ainda. Clique em "📸 Foto" para registrar imagens deste exame.
-      </div>
-    `;
+    `).join('');
 
     filmstripGallery.querySelectorAll('.filmstrip-item').forEach(item => {
-      item.addEventListener('click', () => {
+      item.addEventListener('click', (e) => {
+        if (e.target.classList.contains('btn-delete-frame')) return;
         const index = parseInt(item.dataset.index);
         const frame = study.capturedFrames[index];
         if (frame) {
@@ -343,10 +359,56 @@ export function renderDicomViewer(container, study, state, callbacks) {
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           };
           img.src = frame.dataUrl;
+          showToast(`🖼️ Exibindo Foto #${index + 1} no monitor principal.`, "info");
         }
       });
     });
+
+    filmstripGallery.querySelectorAll('.btn-delete-frame').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.index);
+        study.capturedFrames.splice(idx, 1);
+        saveStudiesToStorage(state.studies);
+        updateFilmstripUI();
+        updateRender();
+        showToast("🗑️ Foto removida do exame.", "warning");
+      });
+    });
   }
+
+  // File import for external photos
+  const fileInput = container.querySelector('#fileExternalPhoto');
+  const btnImportExternal = container.querySelector('#btnImportExternalPhoto');
+  const btnQuickImportFooter = container.querySelector('#btnQuickImportFooter');
+
+  const triggerFileImport = () => {
+    if (fileInput) fileInput.click();
+  };
+
+  btnImportExternal?.addEventListener('click', triggerFileImport);
+  btnQuickImportFooter?.addEventListener('click', triggerFileImport);
+
+  fileInput?.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        addCapturedFrame(event.target.result, "IMPORTAÇÃO EXTERNA");
+      };
+      reader.readAsDataURL(file);
+    });
+
+    fileInput.value = '';
+  });
+
+  // Manual Save All Button
+  container.querySelector('#btnSaveViewer')?.addEventListener('click', () => {
+    saveStudiesToStorage(state.studies);
+    showToast(`💾 Sucesso! O exame e todas as ${study.capturedFrames.length} fotos foram salvos permanentemente!`, "success");
+  });
 
   // Active Tool Click Handlers
   const toolButtons = {
@@ -449,6 +511,7 @@ export function renderDicomViewer(container, study, state, callbacks) {
     if (currentMeasurementDraft) {
       measurements.push({ ...currentMeasurementDraft });
       study.measurements = measurements;
+      saveStudiesToStorage(state.studies);
       currentMeasurementDraft = null;
       updateRender();
     }
@@ -464,19 +527,6 @@ export function renderDicomViewer(container, study, state, callbacks) {
     updateRender();
   });
 
-  // Initial Draw
-  updateRender();
-  updateFilmstripUI();
-
-  // Navigation callbacks
-  container.querySelector('#btnNavReport')?.addEventListener('click', () => {
-    if (callbacks.onToggleViewMode) callbacks.onToggleViewMode('report');
-  });
-
-  container.querySelector('#btnNavSplit')?.addEventListener('click', () => {
-    if (callbacks.onToggleViewMode) callbacks.onToggleViewMode('split');
-  });
-
   // Manual Photo Capture Button
   container.querySelector('#btnManualSnap')?.addEventListener('click', () => {
     const snapCanvas = document.createElement('canvas');
@@ -490,13 +540,12 @@ export function renderDicomViewer(container, study, state, callbacks) {
       renderDicomSlice(snapCanvas, study, { sliceIndex, windowWidth, windowLevel, showAiOverlay: true });
     }
 
-    addCapturedFrame(snapCanvas.toDataURL());
-    alert(`📸 Foto #${study.capturedFrames.length} capturada com sucesso! Adicionada à galeria de miniaturas do exame.`);
+    addCapturedFrame(snapCanvas.toDataURL(), "CAPTURA MANUAL VIEWER");
   });
 
   // Toggle Live Video Capture
   const btnVideoCapture = container.querySelector('#btnVideoCapture');
-  btnVideoCapture.addEventListener('click', async () => {
+  btnVideoCapture?.addEventListener('click', async () => {
     isVideoCaptureActive = !isVideoCaptureActive;
 
     if (isVideoCaptureActive) {
@@ -508,8 +557,8 @@ export function renderDicomViewer(container, study, state, callbacks) {
         const videoDevices = devices.filter(d => d.kind === 'videoinput');
 
         videoSourceSelect.innerHTML = videoDevices.map((d, i) => `
-          <option value="${d.deviceId}">${d.label || `Placa de Captura / Câmera US ${i + 1}`}</option>
-        `).join('') || '<option value="">Placa de Captura Padrão (UVC Video)</option>';
+          <option value="${d.deviceId}">${d.label || `Placa de Captura / Câmera Externa ${i + 1}`}</option>
+        `).join('') || '<option value="">Placa de Captura Padrão (USB Video)</option>';
 
         startVideoStream(videoDevices[0]?.deviceId);
       } catch (err) {
@@ -531,8 +580,9 @@ export function renderDicomViewer(container, study, state, callbacks) {
       activeMediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       usLiveVideo.srcObject = activeMediaStream;
       updateRender();
+      showToast("📹 Placa de Captura / Câmera Conectada ao Vivo!", "info");
     } catch (err) {
-      alert("📹 Modo de Simulação de Captura de Vídeo Ativado!");
+      showToast("📹 Modo de Simulação de Captura de Vídeo Ativado!", "info");
       updateRender();
     }
   }
@@ -562,9 +612,7 @@ export function renderDicomViewer(container, study, state, callbacks) {
       renderDicomSlice(snapCanvas, study, { sliceIndex, windowWidth, windowLevel, showAiOverlay: true });
     }
 
-    addCapturedFrame(snapCanvas.toDataURL());
-    stopVideoStream();
-    alert(`📸 Foto #${study.capturedFrames.length} capturada do vídeo ao vivo com sucesso! Adicionada à galeria do exame.`);
+    addCapturedFrame(snapCanvas.toDataURL(), "PLACA DE CAPTURA");
   });
 
   container.querySelector('#toolReset')?.addEventListener('click', () => {
@@ -576,6 +624,11 @@ export function renderDicomViewer(container, study, state, callbacks) {
     measurements = [];
     study.measurements = [];
     currentMeasurementDraft = null;
+    saveStudiesToStorage(state.studies);
     updateRender();
   });
+
+  // Initial Draw & Gallery Render
+  updateFilmstripUI();
+  updateRender();
 }
