@@ -4,6 +4,33 @@
 
 export const MOCK_WORKLIST = [
   {
+    id: "EX-90415",
+    patientName: "ERICK LIMA",
+    patientId: "CPF: 722.862.991-00",
+    age: "38a",
+    gender: "M",
+    modality: "US",
+    studyDescription: "ULTRASSOM DE ABDÔMEN TOTAL COM DOPPLER",
+    date: "2026-07-28 10:30",
+    modalitiesInStudy: ["US"],
+    seriesCount: 1,
+    instanceCount: 32,
+    status: "pronto",
+    urgency: "normal",
+    physician: "Dr. Carlos Roberto de Mendonça",
+    institution: "NEXUSRAD DIAGNÓSTICO POR IMAGEM",
+    accessionNumber: "ACC-2026-90415",
+    kvp: "Freq: 3.5 MHz Convexo",
+    ma: "Ganho: 70dB",
+    sliceThickness: "N/A",
+    aiFinding: {
+      type: "Exame Ultrassonográfico Sem Alterações Significativas",
+      confidence: "98.9%",
+      box: { x: 25, y: 25, width: 45, height: 40 },
+      description: "Parênquima hepático com vesícula biliar de paredes finas e anecóicas. Rins de dimensões preservadas."
+    }
+  },
+  {
     id: "EX-90416",
     patientName: "ANTÔNIO RODRIGUES GOMES",
     patientId: "CPF: 088.441.229-30",
