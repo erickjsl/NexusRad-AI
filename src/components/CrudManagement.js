@@ -1,13 +1,15 @@
 // ==========================================================================
-// NexusRad AI - Enterprise CRUD Management System (Pacientes, Laudos, Médicos, Convênios)
+// NexusRad AI - Enterprise CRUD Management System (No Browser Prompts, Full Custom Modals)
+// Pacientes, Modelos de Laudos, Corpo Médico & Convênios TUSS
 // ==========================================================================
 
 import { MOCK_TEMPLATES } from '../data/mockData.js';
+import { formatCPF, validateCPF, calculateAge } from '../utils/cpfValidator.js';
 
 export function renderCrudManagement(container, state, callbacks) {
   let activeTab = 'patients'; // 'patients' | 'templates' | 'doctors' | 'agreements'
+  let modalState = null; // null | { type: 'add_patient' | 'edit_patient' | 'add_template' | 'edit_template' | 'add_doctor' | 'add_agreement', item?: any, index?: number }
 
-  // Editable lists in state or local
   if (!state.customPatients) {
     state.customPatients = [...state.studies.map(s => ({
       id: s.patientId,
@@ -19,8 +21,8 @@ export function renderCrudManagement(container, state, callbacks) {
     }))];
   }
 
-  if (!state.customTemplates) {
-    state.customTemplates = Object.entries(MOCK_TEMPLATES).map(([key, tpl]) => ({
+  if (!state.customTemplatesList) {
+    state.customTemplatesList = Object.entries(MOCK_TEMPLATES).map(([key, tpl]) => ({
       key,
       name: tpl.name,
       modality: tpl.modality,
@@ -38,9 +40,18 @@ export function renderCrudManagement(container, state, callbacks) {
     ];
   }
 
+  if (!state.customAgreements) {
+    state.customAgreements = [
+      { id: "CONV-01", name: "Bradesco Saúde S/A", codeTuss: "40901122", price: "R$ 280,00", status: "ATIVO" },
+      { id: "CONV-02", name: "Unimed Nacional", codeTuss: "40901130", price: "R$ 250,00", status: "ATIVO" },
+      { id: "CONV-03", name: "SulAmérica Saúde", codeTuss: "40901149", price: "R$ 310,00", status: "ATIVO" },
+      { id: "CONV-04", name: "SUS - Sistema Único de Saúde", codeTuss: "02050200", price: "R$ 86,00", status: "ATIVO" }
+    ];
+  }
+
   function render() {
     container.innerHTML = `
-      <div style="flex: 1; display: flex; flex-direction: column; padding: 1.5rem; overflow-y: auto; gap: 1.25rem;">
+      <div style="flex: 1; display: flex; flex-direction: column; padding: 1.5rem; overflow-y: auto; gap: 1.25rem; background: var(--bg-dark);">
         
         <!-- Header -->
         <div style="display: flex; align-items: center; justify-content: space-between;">
@@ -50,13 +61,13 @@ export function renderCrudManagement(container, state, callbacks) {
               Central de Cadastros & Gestão CRUD do Sistema
             </h1>
             <p style="color: var(--text-muted); font-size: 0.85rem;">
-              Gerenciamento completo de Pacientes, Modelos de Laudos, Corpo Médico Radiologista e Convênios.
+              Gerenciamento profissional com formulários modais de Pacientes, Laudos, Corpo Médico e Convênios.
             </p>
           </div>
         </div>
 
         <!-- Navigation Tabs -->
-        <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+        <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem; flex-wrap: wrap;">
           <button class="btn-secondary nav-crud-tab ${activeTab === 'patients' ? 'active' : ''}" data-tab="patients" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
             <i data-lucide="user" style="width: 16px; height: 16px;"></i>
             <span>👤 Cadastro de Pacientes (${state.customPatients.length})</span>
@@ -64,12 +75,17 @@ export function renderCrudManagement(container, state, callbacks) {
 
           <button class="btn-secondary nav-crud-tab ${activeTab === 'templates' ? 'active' : ''}" data-tab="templates" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
             <i data-lucide="file-check-2" style="width: 16px; height: 16px;"></i>
-            <span>📝 Cadastro de Modelos de Laudos (${state.customTemplates.length})</span>
+            <span>📝 Máscaras de Laudos (${state.customTemplatesList.length})</span>
           </button>
 
           <button class="btn-secondary nav-crud-tab ${activeTab === 'doctors' ? 'active' : ''}" data-tab="doctors" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
             <i data-lucide="user-plus" style="width: 16px; height: 16px;"></i>
-            <span>👨‍⚕️ Corpo Médico Laudador (${state.customDoctors.length})</span>
+            <span>👨‍⚕️ Corpo Médico (${state.customDoctors.length})</span>
+          </button>
+
+          <button class="btn-secondary nav-crud-tab ${activeTab === 'agreements' ? 'active' : ''}" data-tab="agreements" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+            <i data-lucide="credit-card" style="width: 16px; height: 16px;"></i>
+            <span>💳 Convênios & TUSS (${state.customAgreements.length})</span>
           </button>
         </div>
 
@@ -77,6 +93,9 @@ export function renderCrudManagement(container, state, callbacks) {
         <div id="crudTabContainer">
           ${renderActiveTabContent()}
         </div>
+
+        <!-- Custom Form Modal Overlay -->
+        ${modalState ? renderFormModal() : ''}
 
       </div>
     `;
@@ -90,6 +109,7 @@ export function renderCrudManagement(container, state, callbacks) {
     });
 
     attachTabEvents();
+    if (modalState) attachModalEvents();
   }
 
   function renderActiveTabContent() {
@@ -98,9 +118,9 @@ export function renderCrudManagement(container, state, callbacks) {
         <div class="glass-card" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
           <div style="display: flex; align-items: center; justify-content: space-between;">
             <h3 style="font-size: 1rem; font-weight: 700; color: var(--primary-cyan);">Lista de Pacientes Cadastrados</h3>
-            <button class="btn-primary" id="btnAddPatient" style="font-size: 0.8rem;">
+            <button class="btn-primary" id="btnOpenAddPatientModal" style="font-size: 0.8rem;">
               <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i>
-              <span>+ Novo Paciente</span>
+              <span>+ Cadastrar Novo Paciente</span>
             </button>
           </div>
 
@@ -126,7 +146,7 @@ export function renderCrudManagement(container, state, callbacks) {
                     <td><span class="badge-status concluido">${p.agreement}</span></td>
                     <td>
                       <div class="action-btn-group">
-                        <button class="btn-secondary btn-edit-patient" data-index="${i}" title="Editar Dados do Paciente">
+                        <button class="btn-secondary btn-edit-patient" data-index="${i}" title="Editar Dados">
                           <i data-lucide="edit" style="width: 14px; height: 14px;"></i>
                         </button>
                         <button class="btn-secondary btn-delete-patient" data-index="${i}" title="Excluir Paciente" style="color: #EF4444;">
@@ -145,8 +165,8 @@ export function renderCrudManagement(container, state, callbacks) {
       return `
         <div class="glass-card" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
           <div style="display: flex; align-items: center; justify-content: space-between;">
-            <h3 style="font-size: 1rem; font-weight: 700; color: var(--primary-cyan);">Cadastrar & Editar Modelos de Laudo</h3>
-            <button class="btn-primary" id="btnAddTemplate" style="font-size: 0.8rem;">
+            <h3 style="font-size: 1rem; font-weight: 700; color: var(--primary-cyan);">Biblioteca de Máscaras e Modelos de Laudo</h3>
+            <button class="btn-primary" id="btnOpenAddTemplateModal" style="font-size: 0.8rem;">
               <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
               <span>+ Criar Novo Modelo de Laudo</span>
             </button>
@@ -156,7 +176,7 @@ export function renderCrudManagement(container, state, callbacks) {
             <table class="worklist-table">
               <thead>
                 <tr>
-                  <th>Nome do Modelo de Laudo</th>
+                  <th>Nome da Máscara de Laudo</th>
                   <th>Categoria</th>
                   <th>Modalidade</th>
                   <th>Pré-visualização do Texto</th>
@@ -164,15 +184,15 @@ export function renderCrudManagement(container, state, callbacks) {
                 </tr>
               </thead>
               <tbody>
-                ${state.customTemplates.map((t, i) => `
+                ${state.customTemplatesList.map((t, i) => `
                   <tr>
                     <td><strong>${t.name}</strong></td>
                     <td><span class="badge-status concluido">${t.category}</span></td>
                     <td><span class="badge-modality ${t.modality}">${t.modality}</span></td>
-                    <td><div style="font-size: 0.75rem; color: var(--text-muted); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${t.impression}</div></td>
+                    <td><div style="font-size: 0.75rem; color: var(--text-muted); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${t.impression}</div></td>
                     <td>
                       <div class="action-btn-group">
-                        <button class="btn-secondary btn-edit-template" data-index="${i}" title="Editar Modelo de Laudo">
+                        <button class="btn-secondary btn-edit-template" data-index="${i}" title="Editar Modelo">
                           <i data-lucide="edit" style="width: 14px; height: 14px;"></i>
                         </button>
                         <button class="btn-secondary btn-delete-template" data-index="${i}" title="Excluir Modelo" style="color: #EF4444;">
@@ -191,8 +211,8 @@ export function renderCrudManagement(container, state, callbacks) {
       return `
         <div class="glass-card" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
           <div style="display: flex; align-items: center; justify-content: space-between;">
-            <h3 style="font-size: 1rem; font-weight: 700; color: var(--primary-cyan);">Corpo Médico Laudador</h3>
-            <button class="btn-primary" id="btnAddDoctor" style="font-size: 0.8rem;">
+            <h3 style="font-size: 1rem; font-weight: 700; color: var(--primary-cyan);">Corpo Médico Radiologista & Laudadores</h3>
+            <button class="btn-primary" id="btnOpenAddDoctorModal" style="font-size: 0.8rem;">
               <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i>
               <span>+ Cadastrar Médico</span>
             </button>
@@ -230,97 +250,416 @@ export function renderCrudManagement(container, state, callbacks) {
           </div>
         </div>
       `;
+    } else if (activeTab === 'agreements') {
+      return `
+        <div class="glass-card" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <h3 style="font-size: 1rem; font-weight: 700; color: var(--primary-cyan);">Tabela de Convênios & TUSS</h3>
+            <button class="btn-primary" id="btnOpenAddAgreementModal" style="font-size: 0.8rem;">
+              <i data-lucide="credit-card" style="width: 14px; height: 14px;"></i>
+              <span>+ Cadastrar Convênio / TUSS</span>
+            </button>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="worklist-table">
+              <thead>
+                <tr>
+                  <th>Código ID</th>
+                  <th>Nome do Convênio</th>
+                  <th>Código TUSS Padrão</th>
+                  <th>Valor Base do Exame</th>
+                  <th>Status</th>
+                  <th>Ações CRUD</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${state.customAgreements.map((c, i) => `
+                  <tr>
+                    <td><span style="font-family: monospace; color: var(--primary-cyan);">${c.id}</span></td>
+                    <td><strong>${c.name}</strong></td>
+                    <td>${c.codeTuss}</td>
+                    <td><strong style="color: var(--status-ready);">${c.price}</strong></td>
+                    <td><span class="badge-status concluido">${c.status}</span></td>
+                    <td>
+                      <div class="action-btn-group">
+                        <button class="btn-secondary btn-delete-agreement" data-index="${i}" title="Remover Convênio" style="color: #EF4444;">
+                          <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  function renderFormModal() {
+    if (modalState.type === 'add_patient' || modalState.type === 'edit_patient') {
+      const isEdit = modalState.type === 'edit_patient';
+      const item = modalState.item || {};
+
+      return `
+        <div class="modal-backdrop open" id="crudModalBackdrop">
+          <div class="modal-card" style="max-width: 550px; width: 90%; display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+              <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--primary-cyan);">
+                ${isEdit ? 'Editar Paciente' : 'Cadastrar Novo Paciente'}
+              </h3>
+              <button class="btn-icon" id="btnCloseCrudModal" style="width: 26px; height: 26px;"><i data-lucide="x"></i></button>
+            </div>
+
+            <div class="form-group">
+              <label>Nome Completo do Paciente:</label>
+              <input type="text" id="mPatientName" class="form-select" value="${item.name || ''}" placeholder="Ex: ERICK LIMA">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+              <div class="form-group">
+                <label>CPF do Paciente:</label>
+                <input type="text" id="mPatientCpf" class="form-select" value="${item.cpf || '123.456.789-00'}" placeholder="000.000.000-00">
+              </div>
+
+              <div class="form-group">
+                <label>Telefone / WhatsApp:</label>
+                <input type="text" id="mPatientPhone" class="form-select" value="${item.phone || '(11) 98888-0000'}">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+              <div class="form-group">
+                <label>Idade / Nascimento:</label>
+                <input type="text" id="mPatientAge" class="form-select" value="${item.age || '38 anos'}">
+              </div>
+
+              <div class="form-group">
+                <label>Sexo Biológico:</label>
+                <select id="mPatientGender" class="form-select">
+                  <option value="M" ${item.gender === 'M' ? 'selected' : ''}>Masculino</option>
+                  <option value="F" ${item.gender === 'F' ? 'selected' : ''}>Feminino</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Convênio Médico:</label>
+              <select id="mPatientAgreement" class="form-select">
+                <option value="Bradesco Saúde">Bradesco Saúde</option>
+                <option value="Unimed Nacional">Unimed Nacional</option>
+                <option value="SulAmérica Saúde">SulAmérica Saúde</option>
+                <option value="SUS">SUS</option>
+                <option value="Particular">Particular</option>
+              </select>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+              <button class="btn-secondary" id="btnCancelCrudModal">Cancelar</button>
+              <button class="btn-primary" id="btnSavePatientModal">Salvar Paciente</button>
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (modalState.type === 'add_template' || modalState.type === 'edit_template') {
+      const item = modalState.item || {};
+
+      return `
+        <div class="modal-backdrop open" id="crudModalBackdrop">
+          <div class="modal-card" style="max-width: 600px; width: 90%; display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+              <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--primary-cyan);">Cadastrar / Editar Máscara de Laudo</h3>
+              <button class="btn-icon" id="btnCloseCrudModal" style="width: 26px; height: 26px;"><i data-lucide="x"></i></button>
+            </div>
+
+            <div class="form-group">
+              <label>Título da Máscara de Laudo:</label>
+              <input type="text" id="mTplName" class="form-select" value="${item.name || ''}" placeholder="Ex: Ultrassom de Carótidas Especial">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+              <div class="form-group">
+                <label>Modalidade:</label>
+                <select id="mTplModality" class="form-select">
+                  <option value="US">Ultrassonografia (US)</option>
+                  <option value="CT">Tomografia (TC)</option>
+                  <option value="MR">Ressonância (RM)</option>
+                  <option value="DX">Raio-X (RX)</option>
+                  <option value="MG">Mamografia (MG)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Categoria:</label>
+                <input type="text" id="mTplCategory" class="form-select" value="${item.category || 'Personalizados Clínica'}">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Texto da Técnica e Achados:</label>
+              <textarea id="mTplFindings" class="form-select" style="height: 100px; font-family: monospace;">${item.findings || 'TÉCNICA:\nExame realizado com transdutor linear de alta frequência.\n\nACHADOS:\nEstruturas anatômicas preservadas.'}</textarea>
+            </div>
+
+            <div class="form-group">
+              <label>Impressão Diagnóstica / Conclusão:</label>
+              <input type="text" id="mTplImpression" class="form-select" value="${item.impression || 'Exame dentro dos padrões da normalidade.'}">
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+              <button class="btn-secondary" id="btnCancelCrudModal">Cancelar</button>
+              <button class="btn-primary" id="btnSaveTemplateModal">Salvar Máscara de Laudo</button>
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (modalState.type === 'add_doctor') {
+      return `
+        <div class="modal-backdrop open" id="crudModalBackdrop">
+          <div class="modal-card" style="max-width: 500px; width: 90%; display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+              <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--primary-cyan);">Cadastrar Médico Radiologista</h3>
+              <button class="btn-icon" id="btnCloseCrudModal" style="width: 26px; height: 26px;"><i data-lucide="x"></i></button>
+            </div>
+
+            <div class="form-group">
+              <label>Nome Completo do Médico:</label>
+              <input type="text" id="mDoctorName" class="form-select" placeholder="Ex: Dr. Fernando Ramos">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+              <div class="form-group">
+                <label>CRM e Estado:</label>
+                <input type="text" id="mDoctorCrm" class="form-select" placeholder="CRM/SP 200.123">
+              </div>
+
+              <div class="form-group">
+                <label>Especialidade:</label>
+                <input type="text" id="mDoctorSpecialty" class="form-select" value="Radiologia & Diagnóstico por Imagem">
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+              <button class="btn-secondary" id="btnCancelCrudModal">Cancelar</button>
+              <button class="btn-primary" id="btnSaveDoctorModal">Salvar Médico</button>
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (modalState.type === 'add_agreement') {
+      return `
+        <div class="modal-backdrop open" id="crudModalBackdrop">
+          <div class="modal-card" style="max-width: 500px; width: 90%; display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+              <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--primary-cyan);">Cadastrar Convênio / Tabela TUSS</h3>
+              <button class="btn-icon" id="btnCloseCrudModal" style="width: 26px; height: 26px;"><i data-lucide="x"></i></button>
+            </div>
+
+            <div class="form-group">
+              <label>Nome do Convênio / Plano:</label>
+              <input type="text" id="mAgreeName" class="form-select" placeholder="Ex: Porto Seguro Saúde">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+              <div class="form-group">
+                <label>Código TUSS Padrão:</label>
+                <input type="text" id="mAgreeTuss" class="form-select" placeholder="40901150">
+              </div>
+
+              <div class="form-group">
+                <label>Valor Base do Exame (R$):</label>
+                <input type="text" id="mAgreePrice" class="form-select" placeholder="R$ 300,00">
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+              <button class="btn-secondary" id="btnCancelCrudModal">Cancelar</button>
+              <button class="btn-primary" id="btnSaveAgreementModal">Salvar Convênio</button>
+            </div>
+          </div>
+        </div>
+      `;
     }
   }
 
   function attachTabEvents() {
-    // Add Patient Form Modal
-    container.querySelector('#btnAddPatient')?.addEventListener('click', () => {
-      const name = prompt("Nome completo do novo paciente:");
-      if (name) {
-        const cpf = prompt("CPF do paciente:", "088.000.111-99");
-        state.customPatients.unshift({
-          id: `CPF: ${cpf || '000.000.000-00'}`,
-          name: name.toUpperCase(),
-          age: "35a",
-          gender: "F",
-          phone: "(11) 98888-0000",
-          agreement: "Bradesco Saúde"
-        });
-        render();
-        alert(`✅ Paciente ${name} cadastrado com sucesso!`);
-      }
+    // Patients
+    container.querySelector('#btnOpenAddPatientModal')?.addEventListener('click', () => {
+      modalState = { type: 'add_patient' };
+      render();
     });
 
-    // Delete Patient
+    container.querySelectorAll('.btn-edit-patient').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.index);
+        modalState = { type: 'edit_patient', index: idx, item: state.customPatients[idx] };
+        render();
+      });
+    });
+
     container.querySelectorAll('.btn-delete-patient').forEach(btn => {
       btn.addEventListener('click', () => {
-        const index = parseInt(btn.dataset.index);
-        state.customPatients.splice(index, 1);
+        const idx = parseInt(btn.dataset.index);
+        state.customPatients.splice(idx, 1);
         render();
       });
     });
 
-    // Add Template Modal Form
-    container.querySelector('#btnAddTemplate')?.addEventListener('click', () => {
-      const title = prompt("Título da nova máscara de laudo (ex: Ultrassom de Carótidas Especial):");
-      if (title) {
-        const findings = prompt("Texto dos Achados da Técnica:", "TÉCNICA:\nExame realizado com transdutor linear.\n\nACHADOS:\nEstruturas dentro da normalidade.");
-        const impression = prompt("Conclusão Diagnóstica:", "Exame normal.");
-
-        const newKey = `CUSTOM_${Date.now()}`;
-        const newTpl = {
-          key: newKey,
-          name: title,
-          modality: "US",
-          category: "Personalizados Clínica",
-          findings: findings || "Exame sem alterações.",
-          impression: impression || "Exame normal."
-        };
-
-        state.customTemplates.unshift(newTpl);
-        MOCK_TEMPLATES[newKey] = newTpl;
-        render();
-        alert(`✅ Modelo de Laudo "${title}" cadastrado com sucesso na biblioteca!`);
-      }
+    // Templates
+    container.querySelector('#btnOpenAddTemplateModal')?.addEventListener('click', () => {
+      modalState = { type: 'add_template' };
+      render();
     });
 
-    // Delete Template
+    container.querySelectorAll('.btn-edit-template').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.index);
+        modalState = { type: 'edit_template', index: idx, item: state.customTemplatesList[idx] };
+        render();
+      });
+    });
+
     container.querySelectorAll('.btn-delete-template').forEach(btn => {
       btn.addEventListener('click', () => {
-        const index = parseInt(btn.dataset.index);
-        const item = state.customTemplates[index];
-        if (item) {
-          delete MOCK_TEMPLATES[item.key];
-          state.customTemplates.splice(index, 1);
-          render();
-        }
+        const idx = parseInt(btn.dataset.index);
+        state.customTemplatesList.splice(idx, 1);
+        render();
       });
     });
 
-    // Add Doctor
-    container.querySelector('#btnAddDoctor')?.addEventListener('click', () => {
-      const name = prompt("Nome completo do médico radiologista:");
-      if (name) {
-        const crm = prompt("CRM / UF:", "CRM/SP 200.123");
-        state.customDoctors.push({
-          id: `MED-${state.customDoctors.length + 1}`,
-          name: name,
-          crm: crm || "CRM/SP 000.000",
-          specialty: "Radiologia & Diagnóstico por Imagem"
-        });
-        render();
-        alert(`✅ Médico ${name} cadastrado com sucesso!`);
-      }
+    // Doctors
+    container.querySelector('#btnOpenAddDoctorModal')?.addEventListener('click', () => {
+      modalState = { type: 'add_doctor' };
+      render();
     });
 
-    // Delete Doctor
     container.querySelectorAll('.btn-delete-doctor').forEach(btn => {
       btn.addEventListener('click', () => {
-        const index = parseInt(btn.dataset.index);
-        state.customDoctors.splice(index, 1);
+        const idx = parseInt(btn.dataset.index);
+        state.customDoctors.splice(idx, 1);
         render();
       });
+    });
+
+    // Agreements
+    container.querySelector('#btnOpenAddAgreementModal')?.addEventListener('click', () => {
+      modalState = { type: 'add_agreement' };
+      render();
+    });
+
+    container.querySelectorAll('.btn-delete-agreement').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.index);
+        state.customAgreements.splice(idx, 1);
+        render();
+      });
+    });
+  }
+
+  function attachModalEvents() {
+    const closeModal = () => {
+      modalState = null;
+      render();
+    };
+
+    container.querySelector('#btnCloseCrudModal')?.addEventListener('click', closeModal);
+    container.querySelector('#btnCancelCrudModal')?.addEventListener('click', closeModal);
+
+    // Save Patient Modal
+    container.querySelector('#btnSavePatientModal')?.addEventListener('click', () => {
+      const name = container.querySelector('#mPatientName').value.trim();
+      if (!name) {
+        alert("⚠️ Nome do paciente é obrigatório!");
+        return;
+      }
+
+      const cpf = container.querySelector('#mPatientCpf').value.trim();
+      const phone = container.querySelector('#mPatientPhone').value.trim();
+      const age = container.querySelector('#mPatientAge').value.trim();
+      const gender = container.querySelector('#mPatientGender').value;
+      const agreement = container.querySelector('#mPatientAgreement').value;
+
+      if (modalState.type === 'edit_patient' && modalState.index !== undefined) {
+        state.customPatients[modalState.index] = {
+          id: `CPF: ${cpf}`,
+          name: name.toUpperCase(),
+          age, gender, phone, agreement
+        };
+      } else {
+        state.customPatients.unshift({
+          id: `CPF: ${cpf}`,
+          name: name.toUpperCase(),
+          age, gender, phone, agreement
+        });
+      }
+
+      closeModal();
+    });
+
+    // Save Template Modal
+    container.querySelector('#btnSaveTemplateModal')?.addEventListener('click', () => {
+      const name = container.querySelector('#mTplName').value.trim();
+      if (!name) {
+        alert("⚠️ Título do modelo é obrigatório!");
+        return;
+      }
+
+      const modality = container.querySelector('#mTplModality').value;
+      const category = container.querySelector('#mTplCategory').value.trim();
+      const findings = container.querySelector('#mTplFindings').value;
+      const impression = container.querySelector('#mTplImpression').value;
+
+      const newTpl = {
+        key: `CUSTOM_${Date.now()}`,
+        name, modality, category, findings, impression
+      };
+
+      if (modalState.type === 'edit_template' && modalState.index !== undefined) {
+        state.customTemplatesList[modalState.index] = newTpl;
+      } else {
+        state.customTemplatesList.unshift(newTpl);
+        MOCK_TEMPLATES[newTpl.key] = newTpl;
+      }
+
+      closeModal();
+    });
+
+    // Save Doctor Modal
+    container.querySelector('#btnSaveDoctorModal')?.addEventListener('click', () => {
+      const name = container.querySelector('#mDoctorName').value.trim();
+      if (!name) {
+        alert("⚠️ Nome do médico é obrigatório!");
+        return;
+      }
+
+      state.customDoctors.push({
+        id: `MED-${state.customDoctors.length + 1}`,
+        name,
+        crm: container.querySelector('#mDoctorCrm').value || 'CRM/SP 000.000',
+        specialty: container.querySelector('#mDoctorSpecialty').value
+      });
+
+      closeModal();
+    });
+
+    // Save Agreement Modal
+    container.querySelector('#btnSaveAgreementModal')?.addEventListener('click', () => {
+      const name = container.querySelector('#mAgreeName').value.trim();
+      if (!name) {
+        alert("⚠️ Nome do convênio é obrigatório!");
+        return;
+      }
+
+      state.customAgreements.push({
+        id: `CONV-${state.customAgreements.length + 1}`,
+        name,
+        codeTuss: container.querySelector('#mAgreeTuss').value || '40901100',
+        price: container.querySelector('#mAgreePrice').value || 'R$ 200,00',
+        status: 'ATIVO'
+      });
+
+      closeModal();
     });
   }
 
