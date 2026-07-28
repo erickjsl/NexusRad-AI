@@ -87,9 +87,9 @@ export function renderHeader(container, state, callbacks) {
 
         <!-- Logged User Profile Switcher (RBAC) -->
         <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-card-hover); padding: 0.25rem 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
-          <select id="userRoleSelect" class="form-select" style="font-size: 0.75rem; font-weight: 700; background: transparent; border: none; color: #FFF; cursor: pointer;">
+          <select id="userRoleSelect" class="form-select" style="font-size: 0.75rem; font-weight: 700; background: #0F172A; border: 1px solid var(--border-light); color: #FFF; cursor: pointer;">
             ${DEMO_USERS.map(u => `
-              <option value="${u.username}" ${u.username === user.username ? 'selected' : ''}>
+              <option value="${u.username}" ${u.username === user.username ? 'selected' : ''} style="background: #0F172A; color: #FFFFFF; font-weight: 600;">
                 ${u.avatar} ${u.name.split(' ')[0]} (${u.badge})
               </option>
             `).join('')}

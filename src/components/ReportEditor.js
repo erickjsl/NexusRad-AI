@@ -31,9 +31,9 @@ export function renderReportEditor(container, study, allStudies = [], callbacks 
               PACIENTE:
             </label>
 
-            <select id="patientSelectDropdown" class="form-select" style="font-size: 0.85rem; font-weight: 600; padding: 0.4rem 0.75rem; border-color: var(--primary-cyan); background: rgba(0, 229, 255, 0.05); color: #FFF; width: 100%;">
+            <select id="patientSelectDropdown" class="form-select" style="font-size: 0.85rem; font-weight: 600; padding: 0.4rem 0.75rem; border-color: var(--primary-cyan); background: #0F172A; color: #FFF; width: 100%;">
               ${allStudies.map(s => `
-                <option value="${s.id}" ${s.id === currentStudy.id ? 'selected' : ''}>
+                <option value="${s.id}" ${s.id === currentStudy.id ? 'selected' : ''} style="background: #0F172A; color: #FFFFFF; font-weight: 600; padding: 6px;">
                   ${s.patientName} — ${s.studyDescription} (${s.modality}) [${s.status.toUpperCase()}]
                 </option>
               `).join('')}

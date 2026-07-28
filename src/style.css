@@ -805,21 +805,45 @@ code, pre, .font-mono {
   text-transform: uppercase;
 }
 
-.form-select, .form-textarea {
-  background: rgba(15, 23, 42, 0.8);
+.form-select, .form-textarea, select {
+  background: #0B1120 !important;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: 0.65rem 0.85rem;
-  color: var(--text-main);
+  color: #F1F5F9 !important;
   font-size: 0.875rem;
   font-family: inherit;
+  font-weight: 600;
   outline: none;
   transition: border-color var(--transition-fast);
 }
 
-.form-select:focus, .form-textarea:focus {
+.form-select:focus, .form-textarea:focus, select:focus {
   border-color: var(--primary-cyan);
   box-shadow: 0 0 10px var(--primary-cyan-soft);
+}
+
+/* Explicit Global Styling for Dropdown Options Menu */
+select option,
+.form-select option,
+option {
+  background-color: #0F172A !important;
+  color: #FFFFFF !important;
+  padding: 10px 14px !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+}
+
+select option:hover,
+select option:focus,
+select option:checked,
+.form-select option:hover,
+.form-select option:focus,
+.form-select option:checked,
+option:checked {
+  background-color: #00E5FF !important;
+  color: #05080E !important;
+  font-weight: 700 !important;
 }
 
 .form-textarea {
