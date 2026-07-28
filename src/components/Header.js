@@ -1,5 +1,6 @@
 // ==========================================================================
-// NexusRad AI - Collapsible Top Header Navigation (Maximizes DICOM Workspace)
+// NexusRad AI - Context-Aware Smart Header Navigation
+// Adapts dynamically per view screen (Worklist vs DICOM Viewer vs CRUD vs Portal)
 // ==========================================================================
 
 import { renderNewExamWizardModal } from './NewExamWizardModal.js';
@@ -8,32 +9,66 @@ import { DEMO_USERS } from './LoginModal.js';
 export function renderHeader(container, state, callbacks) {
   const user = state.currentUser || DEMO_USERS[0];
   const isCollapsed = state.headerCollapsed || false;
+  const currentView = state.currentView || 'worklist';
+
+  // Determine if current view benefits from full search & modality filters
+  const isWorklistContext = currentView === 'worklist' || currentView === 'dashboard';
+
+  const viewTitles = {
+    dashboard: "📊 Painel Executivo & KPIs",
+    worklist: "📋 Central de Laudos & Worklist",
+    appointments: "📅 Recepção & Agendamento",
+    viewer: "👁️ Visualizador Médico DICOM",
+    report: "📝 Estação de Laudagem & IA Copilot",
+    split: "↔️ Modo Dividido (2 Monitores)",
+    record: "📜 Prontuário Médico Eletrônico",
+    portal: "🌐 Portal de Entrega ao Paciente",
+    crud: "📁 Central de Cadastros (CRUD)",
+    billing: "💳 Faturamento TUSS & TISS",
+    settings: "⚙️ Configurações do Servidor"
+  };
 
   container.innerHTML = `
     <header class="app-header ${isCollapsed ? 'collapsed' : ''}" style="${isCollapsed ? 'display: none;' : ''}">
+      
+      <!-- Brand & Module Title -->
       <div class="brand-container" id="brandBtn" title="Ir para a Central de Laudos (Worklist)">
         <div class="brand-icon">
           <i data-lucide="activity"></i>
         </div>
         <div>
           <span class="brand-title">NexusRad <span style="color: var(--primary-cyan)">AI</span></span>
-          <span class="brand-tag">PACS / RIS v3.4</span>
+          <span class="brand-tag">${viewTitles[currentView] || 'PACS / RIS v3.4'}</span>
         </div>
       </div>
 
+      <!-- Center Bar: Full Search in Worklist, Sleek Context Title in Other Views -->
       <div class="header-center">
-        <div class="search-box">
-          <i data-lucide="search" class="search-icon"></i>
-          <input type="text" id="searchInput" placeholder="Buscar por Nome do Paciente, Prontuário, CPF ou Acc#..." value="${state.searchTerm || ''}">
-        </div>
+        ${isWorklistContext ? `
+          <div class="search-box">
+            <i data-lucide="search" class="search-icon"></i>
+            <input type="text" id="searchInput" placeholder="Buscar por Nome do Paciente, Prontuário, CPF ou Acc#..." value="${state.searchTerm || ''}">
+          </div>
 
-        <div class="modality-pills">
-          ${['TODOS', 'CT', 'DX', 'MR', 'US', 'MG'].map(mod => `
-            <button class="modality-btn ${state.activeModality === mod ? 'active' : ''}" data-modality="${mod}">${mod}</button>
-          `).join('')}
-        </div>
+          <div class="modality-pills">
+            ${['TODOS', 'CT', 'DX', 'MR', 'US', 'MG'].map(mod => `
+              <button class="modality-btn ${state.activeModality === mod ? 'active' : ''}" data-modality="${mod}">${mod}</button>
+            `).join('')}
+          </div>
+        ` : `
+          <div style="display: flex; align-items: center; gap: 0.75rem; background: rgba(15, 23, 42, 0.6); padding: 0.4rem 1rem; border-radius: 20px; border: 1px solid var(--border-light);">
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary-cyan);">
+              ${viewTitles[currentView] || 'MÓDULO ATIVO'}
+            </span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">|</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
+              Dr. Carlos • NexusRad Diagnostic Clinic
+            </span>
+          </div>
+        `}
       </div>
 
+      <!-- Right Action Controls -->
       <div style="display: flex; align-items: center; gap: 0.75rem;">
         <div class="dicom-status">
           <span class="status-dot"></span>
@@ -42,7 +77,7 @@ export function renderHeader(container, state, callbacks) {
 
         <button class="btn-primary" id="btnNewExamWizard" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: linear-gradient(135deg, #00E5FF 0%, #3B82F6 100%); border: none;">
           <i data-lucide="file-plus" style="width: 16px; height: 16px;"></i>
-          <span>Gerar Novo Exame</span>
+          <span>Novo Exame</span>
         </button>
 
         <button class="btn-secondary" id="btnUploadModal" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" title="Importar arquivo binário .dcm">
@@ -66,7 +101,7 @@ export function renderHeader(container, state, callbacks) {
         </div>
 
         <!-- Collapse Header Button -->
-        <button id="btnCollapseHeader" class="btn-secondary" style="padding: 0.35rem; border-radius: 6px;" title="Ocultar Cabeçalho Superior (Maximizar Área do Viewer)">
+        <button id="btnCollapseHeader" class="btn-secondary" style="padding: 0.35rem; border-radius: 6px;" title="Ocultar Cabeçalho Superior">
           <i data-lucide="chevron-up" style="width: 16px; height: 16px; color: var(--primary-cyan);"></i>
         </button>
       </div>
