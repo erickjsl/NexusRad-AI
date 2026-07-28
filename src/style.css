@@ -602,6 +602,30 @@ code, pre, .font-mono {
   border-color: var(--border-active);
 }
 
+.nav-item:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-main);
+}
+
+.nav-item.active {
+  background: var(--primary-cyan-soft);
+  color: var(--primary-cyan);
+  border-left-color: var(--primary-cyan);
+  box-shadow: inset 2px 0 8px var(--primary-cyan-glow);
+}
+
+/* RBAC Disabled Menu Items */
+.nav-item.disabled-rbac {
+  opacity: 0.25 !important;
+  filter: grayscale(1) !important;
+  cursor: not-allowed !important;
+}
+
+.nav-item.disabled-rbac:hover {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
 .tool-divider {
   width: 1px;
   height: 24px;

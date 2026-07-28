@@ -1,31 +1,47 @@
 // ==========================================================================
-// NexusRad AI - Login & User Authentication System
+// NexusRad AI - Login & User Authentication System with Role-Based Access Control (RBAC)
 // ==========================================================================
 
 export const DEMO_USERS = [
   {
+    username: "dr_carlos",
     name: "Dr. Carlos Roberto de Mendonça",
     email: "dr.radiologista@nexusrad.com.br",
     role: "Médico Radiologista (Laudador)",
     crm: "CRM/SP 142.890 • RQE 88.102",
     badge: "LAUDADOR MASTER",
-    avatar: "👨‍⚕️"
+    avatar: "👨‍⚕️",
+    allowedViews: ['dashboard', 'worklist', 'viewer', 'report', 'split', 'record']
   },
   {
+    username: "dra_patricia",
     name: "Dra. Patricia Lima",
     email: "dra.patricia@nexusrad.com.br",
     role: "Médica Radiologista / Ultrassonografista",
     crm: "CRM/SP 189.430 • RQE 90.112",
     badge: "ULTRASSONOGRAFISTA",
-    avatar: "👩‍⚕️"
+    avatar: "👩‍⚕️",
+    allowedViews: ['worklist', 'viewer', 'report', 'split']
   },
   {
-    name: "Juliana Santos",
-    email: "tecnico@nexusrad.com.br",
-    role: "Técnica de Radiologia / Operadora DICOM",
-    crm: "CRTR/SP 09841",
-    badge: "OPERADOR DICOM",
-    avatar: "🔬"
+    username: "recepcao",
+    name: "Patrícia Souza (Recepção)",
+    email: "recepcao@nexusrad.com.br",
+    role: "Recepção & Atendimento ao Paciente",
+    crm: "MATRÍCULA 8804",
+    badge: "RECEPÇÃO",
+    avatar: "👩‍💼",
+    allowedViews: ['appointments', 'worklist', 'record', 'portal', 'crud']
+  },
+  {
+    username: "gestor",
+    name: "Roberto Mendonça (Gestor)",
+    email: "gestao@nexusrad.com.br",
+    role: "Gestor da Clínica & Faturamento TUSS",
+    crm: "CRA/SP 44091",
+    badge: "GESTOR & FATURAMENTO",
+    avatar: "👨‍💼",
+    allowedViews: ['dashboard', 'billing', 'crud', 'settings']
   }
 ];
 
@@ -43,14 +59,14 @@ export function renderLoginScreen(container, onLoginSuccess) {
             <h1 style="font-size: 1.6rem; font-weight: 700; background: linear-gradient(90deg, #FFFFFF, var(--primary-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
               NexusRad <span style="color: var(--primary-cyan)">AI</span>
             </h1>
-            <p style="font-size: 0.8rem; color: var(--text-muted);">Acesso Restrito - Plataforma PACS/RIS & IA</p>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">Acesso Restrito por Função de Operador (RBAC)</p>
           </div>
         </div>
 
         <!-- Form Login -->
         <form id="loginForm" style="display: flex; flex-direction: column; gap: 1rem;">
           <div class="form-group">
-            <label style="font-size: 0.75rem; font-weight: 600;">E-mail do Médico / Usuário:</label>
+            <label style="font-size: 0.75rem; font-weight: 600;">E-mail do Operador / Função:</label>
             <div style="position: relative;">
               <i data-lucide="user" style="position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-muted);"></i>
               <input type="email" id="loginEmail" class="form-select" style="padding-left: 2.5rem; width: 100%;" value="dr.radiologista@nexusrad.com.br" required>
@@ -74,7 +90,7 @@ export function renderLoginScreen(container, onLoginSuccess) {
         <!-- Quick Access Demo Users -->
         <div style="border-top: 1px solid var(--border-light); padding-top: 1rem;">
           <div style="font-size: 0.7rem; font-weight: 700; color: var(--primary-cyan); text-transform: uppercase; margin-bottom: 0.6rem; text-align: center;">
-            ⚡ Acesso Rápido para Demonstração:
+            ⚡ Selecionar Perfil para Teste de Acesso (RBAC):
           </div>
 
           <div style="display: flex; flex-direction: column; gap: 0.4rem;">
@@ -91,7 +107,7 @@ export function renderLoginScreen(container, onLoginSuccess) {
         </div>
 
         <div style="font-size: 0.65rem; color: var(--text-muted); text-align: center;">
-          Conformidade com LGPD • Resolução CFM 2.314/2022 • ICP-Brasil
+          Conformidade com LGPD • Resolução CFM 2.314/2022 • Control de Acesso RBAC
         </div>
       </div>
     </div>
@@ -102,15 +118,7 @@ export function renderLoginScreen(container, onLoginSuccess) {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const email = container.querySelector('#loginEmail').value;
-    const user = DEMO_USERS.find(u => u.email === email) || {
-      name: "Dr. Médico Radiologista",
-      email: email,
-      role: "Médico Radiologista",
-      crm: "CRM/SP 999.000",
-      badge: "MEDICO",
-      avatar: "👨‍⚕️"
-    };
-
+    const user = DEMO_USERS.find(u => u.email === email) || DEMO_USERS[0];
     onLoginSuccess(user);
   });
 

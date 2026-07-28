@@ -1,10 +1,12 @@
 // ==========================================================================
 // NexusRad AI - Super Complete Enterprise System Settings Hub
-// Clínica, DICOM Gateway, IA Copilot, Notificações WhatsApp, Assinatura ICP-Brasil, Impressão
+// Clínica, DICOM Gateway, IA Copilot, Notificações WhatsApp, Assinatura ICP-Brasil, Voz TTS
 // ==========================================================================
 
 import { showToast } from '../utils/toast.js';
-import { createIcons, Building, RadioReceiver, Sparkles, Send, ShieldCheck, Printer, Save, CheckCircle2, RefreshCw } from 'lucide';
+import { createIcons, Building, RadioReceiver, Sparkles, Send, ShieldCheck, Printer, Save, CheckCircle2, RefreshCw, Volume2 } from 'lucide';
+import { getAvailableVoices, speakText } from '../utils/speechVoice.js';
+import { saveSettingsToStorage } from '../utils/storage.js';
 
 export function renderClinicSettings(container, state, callbacks) {
   let activeTab = 'clinic'; // 'clinic' | 'dicom' | 'ai' | 'whatsapp' | 'security' | 'printer'
@@ -48,10 +50,13 @@ export function renderClinicSettings(container, state, callbacks) {
       auditTrailEnabled: true,
       lgpdEncryption: "AES-256-GCM",
 
-      // Printer & Theme
+      // Printer, Theme & TTS Voice
       theme: "dark",
       paperFormat: "A4",
-      ticketPrinter: "Zebra ZD220 (80mm)"
+      ticketPrinter: "Zebra ZD220 (80mm)",
+      selectedVoiceUri: "",
+      voiceRate: 0.95,
+      voicePitch: 1.0
     };
   }
 
@@ -59,7 +64,7 @@ export function renderClinicSettings(container, state, callbacks) {
 
   function refreshIcons() {
     createIcons({
-      icons: { Building, RadioReceiver, Sparkles, Send, ShieldCheck, Printer, Save, CheckCircle2, RefreshCw }
+      icons: { Building, RadioReceiver, Sparkles, Send, ShieldCheck, Printer, Save, CheckCircle2, RefreshCw, Volume2 }
     });
   }
 
@@ -75,7 +80,7 @@ export function renderClinicSettings(container, state, callbacks) {
               Configurações Globais do Sistema NexusRad AI
             </h1>
             <p style="color: var(--text-muted); font-size: 0.85rem;">
-              Parâmetros da Clínica, Servidores DICOM PACS, IA Copilot, Notificações WhatsApp e Segurança ICP-Brasil.
+              Parâmetros da Clínica, Servidores DICOM PACS, IA Copilot, Notificações WhatsApp, Segurança e Voz do Painel TV.
             </p>
           </div>
 
@@ -113,8 +118,8 @@ export function renderClinicSettings(container, state, callbacks) {
           </button>
 
           <button class="btn-secondary nav-settings-tab ${activeTab === 'printer' ? 'active' : ''}" data-tab="printer">
-            <i data-lucide="printer" style="width: 15px; height: 15px; color: var(--primary-cyan);"></i>
-            <span>🎨 6. Impressão & Interface</span>
+            <i data-lucide="volume-2" style="width: 15px; height: 15px; color: var(--primary-cyan);"></i>
+            <span>🗣️ 6. Voz do Painel & Impressão</span>
           </button>
         </div>
 
@@ -350,26 +355,75 @@ export function renderClinicSettings(container, state, callbacks) {
         </div>
       `;
     } else if (activeTab === 'printer') {
+      const voices = getAvailableVoices();
+
       return `
         <div class="glass-card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
-          <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--primary-cyan); border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
-            🎨 Impressão de Laudos, Formato de Papel & Interface
-          </h3>
+          
+          <!-- Voice Selector Sub-Section -->
+          <div style="display: flex; flex-direction: column; gap: 1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1.25rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--primary-cyan); display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="volume-2" style="width: 18px; height: 18px;"></i>
+                🗣️ Configuração da Voz de Chamada de Paciente (Painel TV)
+              </h3>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <div class="form-group">
-              <label>Impressora de Etiquetas de Recepção (80mm):</label>
-              <input type="text" id="sTicketPrinter" class="form-select" value="${cfg.ticketPrinter}">
+              <button class="btn-primary" id="btnTestVoice" style="background: var(--primary-cyan); color: #000; border: none; font-weight: 700; padding: 0.4rem 0.85rem; font-size: 0.8rem;">
+                🔊 Testar Voz Selecionada
+              </button>
             </div>
 
             <div class="form-group">
-              <label>Formato Padrão do Laudo em PDF:</label>
-              <select id="sPaperFormat" class="form-select">
-                <option value="A4">A4 (Papel Padrão Timbrado)</option>
-                <option value="Carta">Carta</option>
+              <label>Selecione a Voz do Sintetizador de Fala (TTS):</label>
+              <select id="sSelectedVoice" class="form-select" style="background: #0F172A; color: #FFF; font-weight: 600;">
+                ${voices.length === 0 ? `
+                  <option value="">-- Usar Voz Padrão do Navegador / Sistema --</option>
+                ` : voices.map(v => `
+                  <option value="${v.voiceURI}" ${v.voiceURI === cfg.selectedVoiceUri || v.name === cfg.selectedVoiceUri ? 'selected' : ''} style="background: #0F172A; color: #FFF;">
+                    ${v.lang.startsWith('pt') ? '🇧🇷' : '🌐'} ${v.name} (${v.lang})
+                  </option>
+                `).join('')}
               </select>
+              <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                Dica: Escolha vozes rotuladas com "Google Português do Brasil" ou "Microsoft Maria/Daniel" para sonoridade natural.
+              </p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-group">
+                <label>Velocidade da Fala: <span id="lblVoiceRate">${cfg.voiceRate || 0.95}x</span></label>
+                <input type="range" id="sVoiceRate" min="0.5" max="1.5" step="0.05" value="${cfg.voiceRate || 0.95}" style="width: 100%; accent-color: var(--primary-cyan);">
+              </div>
+
+              <div class="form-group">
+                <label>Tom da Voz (Pitch): <span id="lblVoicePitch">${cfg.voicePitch || 1.0}</span></label>
+                <input type="range" id="sVoicePitch" min="0.5" max="1.5" step="0.05" value="${cfg.voicePitch || 1.0}" style="width: 100%; accent-color: var(--primary-cyan);">
+              </div>
             </div>
           </div>
+
+          <!-- Printing Sub-Section -->
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--primary-cyan);">
+              🎨 Impressão de Laudos & Etiquetas da Recepção
+            </h3>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-group">
+                <label>Impressora de Etiquetas de Recepção (80mm):</label>
+                <input type="text" id="sTicketPrinter" class="form-select" value="${cfg.ticketPrinter}">
+              </div>
+
+              <div class="form-group">
+                <label>Formato Padrão do Laudo em PDF:</label>
+                <select id="sPaperFormat" class="form-select">
+                  <option value="A4" ${cfg.paperFormat === 'A4' ? 'selected' : ''}>A4 (Papel Padrão Timbrado)</option>
+                  <option value="Carta" ${cfg.paperFormat === 'Carta' ? 'selected' : ''}>Carta</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
         </div>
       `;
     }
@@ -377,12 +431,54 @@ export function renderClinicSettings(container, state, callbacks) {
 
   function attachEvents() {
     container.querySelector('#btnSaveAllSettings')?.addEventListener('click', () => {
-      showToast("✅ Todas as configurações do sistema foram salvas com sucesso!", "success");
+      // Save form fields to state.settingsConfig
+      if (activeTab === 'printer') {
+        const voiceSelect = container.querySelector('#sSelectedVoice');
+        if (voiceSelect) cfg.selectedVoiceUri = voiceSelect.value;
+        const rateInput = container.querySelector('#sVoiceRate');
+        if (rateInput) cfg.voiceRate = parseFloat(rateInput.value);
+        const pitchInput = container.querySelector('#sVoicePitch');
+        if (pitchInput) cfg.voicePitch = parseFloat(pitchInput.value);
+      }
+
+      saveSettingsToStorage(state.settingsConfig);
+      showToast("✅ Configurações salvas permanentemente com sucesso!", "success");
     });
 
     container.querySelector('#btnTestDicomEcho')?.addEventListener('click', () => {
       showToast("📡 DICOM C-ECHO Ping com sucesso! Resposta: 14ms (PACS ONLINE)", "info");
     });
+
+    container.querySelector('#btnTestVoice')?.addEventListener('click', () => {
+      const voiceSelect = container.querySelector('#sSelectedVoice');
+      const selectedUri = voiceSelect ? voiceSelect.value : cfg.selectedVoiceUri;
+      const rate = container.querySelector('#sVoiceRate') ? parseFloat(container.querySelector('#sVoiceRate').value) : 0.95;
+      const pitch = container.querySelector('#sVoicePitch') ? parseFloat(container.querySelector('#sVoicePitch').value) : 1.0;
+
+      cfg.selectedVoiceUri = selectedUri;
+      cfg.voiceRate = rate;
+      cfg.voicePitch = pitch;
+
+      speakText("Atenção: Paciente Erick Lima, favor dirigir-se à Sala de Ultrassom número 02.", selectedUri, rate, pitch);
+      showToast("🔊 Testando reprodução de voz do painel...", "info");
+    });
+
+    container.querySelector('#sVoiceRate')?.addEventListener('input', (e) => {
+      const lbl = container.querySelector('#lblVoiceRate');
+      if (lbl) lbl.textContent = `${e.target.value}x`;
+    });
+
+    container.querySelector('#sVoicePitch')?.addEventListener('input', (e) => {
+      const lbl = container.querySelector('#lblVoicePitch');
+      if (lbl) lbl.textContent = e.target.value;
+    });
+  }
+
+  // Reload voices when browser finishes loading voices
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      if (activeTab === 'printer') render();
+    };
   }
 
   render();

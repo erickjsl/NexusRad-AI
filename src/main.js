@@ -1,11 +1,11 @@
 // ==========================================================================
 // NexusRad AI - Complete Diagnostic Clinic System (Standard Brazilian PACS/RIS Menus)
 // Benchmark: Pixeon NetPACS, Animati PACS, Carestream Vue, Soul MV RIS
-// Persistent LocalStorage Storage Engine Integrated
+// RBAC Operator Access Control Engine Integrated
 // ==========================================================================
 
 import './style.css';
-import { createIcons, Activity, Search, ListFilter, Eye, FileText, UploadCloud, Sun, Ruler, CircleDot, ZoomIn, Move, Contrast, RotateCcw, RotateCw, Play, Pause, Sparkles, FileCheck2, Mic, Save, Printer, ShieldCheck, RadioReceiver, X, FolderOpen, Inbox, Columns, Loader, User, Lock, LogIn, LogOut, Calendar, CreditCard, Settings, UserPlus, Download, Building, Camera, Power, Video, Globe, ArrowLeft, ArrowRight, Share2, Send, Clock, Maximize2, Columns2, Keyboard, Edit, Trash2, DollarSign, LayoutDashboard, FilePlus, Triangle, ArrowUpRight, History, UserCheck, Key, BarChart2, ChevronUp, ChevronDown } from 'lucide';
+import { createIcons, Activity, Search, ListFilter, Eye, FileText, UploadCloud, Sun, Ruler, CircleDot, ZoomIn, Move, Contrast, RotateCcw, RotateCw, Play, Pause, Sparkles, FileCheck2, Mic, Save, Printer, ShieldCheck, RadioReceiver, X, FolderOpen, Inbox, Columns, Loader, User, Lock, LogIn, LogOut, Calendar, CreditCard, Settings, UserPlus, Download, Building, Camera, Power, Video, Globe, ArrowLeft, ArrowRight, Share2, Send, Clock, Maximize2, Columns2, Keyboard, Edit, Trash2, DollarSign, LayoutDashboard, FilePlus, Triangle, ArrowUpRight, History, UserCheck, Key, BarChart2, ChevronUp, ChevronDown, LockKeyhole } from 'lucide';
 import { MOCK_WORKLIST } from './data/mockData.js';
 import { renderHeader } from './components/Header.js';
 import { renderWorklist } from './components/Worklist.js';
@@ -21,6 +21,7 @@ import { renderCrudManagement } from './components/CrudManagement.js';
 import { renderMedicalRecordPage } from './components/MedicalRecordPage.js';
 import { renderDashboard } from './components/Dashboard.js';
 import { loadPersistentState, saveStudiesToStorage } from './utils/storage.js';
+import { showToast } from './utils/toast.js';
 
 // State
 const state = {
@@ -46,9 +47,19 @@ const state = {
   }
 };
 
+function isViewAllowed(user, viewName) {
+  if (!user || !user.allowedViews) return true;
+  return user.allowedViews.includes(viewName);
+}
+
 // Initialize App & Load Persistent Data
 function init() {
   loadPersistentState(state);
+
+  // Validate initial view against user allowed views
+  if (!isViewAllowed(state.currentUser, state.currentView)) {
+    state.currentView = state.currentUser.allowedViews ? state.currentUser.allowedViews[0] : 'worklist';
+  }
 
   const hash = window.location.hash;
   if (hash.startsWith('#/portal/')) {
@@ -73,42 +84,44 @@ function init() {
     return;
   }
 
+  const user = state.currentUser;
+
   appContainer.innerHTML = `
     <div id="headerContainer"></div>
     <div class="app-body">
-      <!-- Standard Brazilian PACS/RIS Sidebar Navigation (Pixeon / Animati / Soul MV Style) -->
+      <!-- Standard Brazilian PACS/RIS Sidebar Navigation (Role-Based Access Control Filtering) -->
       <nav class="sidebar-nav">
-        <div class="nav-item ${state.currentView === 'dashboard' ? 'active' : ''}" id="navDashboard" title="Painel Dashboard Executivo & KPIs Radiológicos">
+        <div class="nav-item ${state.currentView === 'dashboard' ? 'active' : ''} ${!isViewAllowed(user, 'dashboard') ? 'disabled-rbac' : ''}" id="navDashboard" title="${isViewAllowed(user, 'dashboard') ? 'Painel Dashboard Executivo & KPIs Radiológicos' : '🔒 Módulo Restrito para ' + user.role}">
           <i data-lucide="layout-dashboard"></i>
         </div>
-        <div class="nav-item ${state.currentView === 'worklist' ? 'active' : ''}" id="navWorklist" title="Central de Laudos & Worklist RIS (Atalho: W)">
+        <div class="nav-item ${state.currentView === 'worklist' ? 'active' : ''} ${!isViewAllowed(user, 'worklist') ? 'disabled-rbac' : ''}" id="navWorklist" title="${isViewAllowed(user, 'worklist') ? 'Central de Laudos & Worklist RIS (Atalho: W)' : '🔒 Módulo Restrito para ' + user.role}">
           <i data-lucide="list-filter"></i>
         </div>
-        <div class="nav-item ${state.currentView === 'appointments' ? 'active' : ''}" id="navAppointments" title="Recepção, Agendamento & Painel TV">
+        <div class="nav-item ${state.currentView === 'appointments' ? 'active' : ''} ${!isViewAllowed(user, 'appointments') ? 'disabled-rbac' : ''}" id="navAppointments" title="${isViewAllowed(user, 'appointments') ? 'Recepção, Agendamento & Painel TV' : '🔒 Módulo Restrito para ' + user.role}">
           <i data-lucide="calendar"></i>
         </div>
-        <div class="nav-item ${state.currentView === 'viewer' ? 'active' : ''}" id="navViewer" title="Visualizador Médico Diagnóstico DICOM 2D / US (Atalho: V)">
+        <div class="nav-item ${state.currentView === 'viewer' ? 'active' : ''} ${!isViewAllowed(user, 'viewer') ? 'disabled-rbac' : ''}" id="navViewer" title="${isViewAllowed(user, 'viewer') ? 'Visualizador Médico Diagnóstico DICOM 2D / US (Atalho: V)' : '🔒 Módulo Restrito para ' + user.role}">
           <i data-lucide="eye"></i>
         </div>
-        <div class="nav-item ${state.currentView === 'report' ? 'active' : ''}" id="navReport" title="Estação de Laudagem Estruturada & IA Copilot (Atalho: L)">
+        <div class="nav-item ${state.currentView === 'report' ? 'active' : ''} ${!isViewAllowed(user, 'report') ? 'disabled-rbac' : ''}" id="navReport" title="${isViewAllowed(user, 'report') ? 'Estação de Laudagem Estruturada & IA Copilot (Atalho: L)' : '🔒 Módulo Restrito para ' + user.role}">
           <i data-lucide="file-text"></i>
         </div>
-        <div class="nav-item ${state.currentView === 'split' ? 'active' : ''}" id="navSplit" title="Estação 2 Monitores / Visão Dividida (Atalho: S)">
+        <div class="nav-item ${state.currentView === 'split' ? 'active' : ''} ${!isViewAllowed(user, 'split') ? 'disabled-rbac' : ''}" id="navSplit" title="${isViewAllowed(user, 'split') ? 'Estação 2 Monitores / Visão Dividida (Atalho: S)' : '🔒 Módulo Restrito para ' + user.role}">
           <i data-lucide="columns-2"></i>
         </div>
-        <div class="nav-item ${state.currentView === 'record' ? 'active' : ''}" id="navRecord" title="Prontuário Médico Eletrônico & Central do Médico Solicitante">
+        <div class="nav-item ${state.currentView === 'record' ? 'active' : ''} ${!isViewAllowed(user, 'record') ? 'disabled-rbac' : ''}" id="navRecord" title="${isViewAllowed(user, 'record') ? 'Prontuário Médico Eletrônico & Central do Médico Solicitante' : '🔒 Módulo Restrito para ' + user.role}">
           <i data-lucide="history"></i>
         </div>
-        <div class="nav-item ${state.currentView === 'portal' ? 'active' : ''}" id="navPortal" title="Portal de Entrega de Exames ao Paciente & Médico">
+        <div class="nav-item ${state.currentView === 'portal' ? 'active' : ''} ${!isViewAllowed(user, 'portal') ? 'disabled-rbac' : ''}" id="navPortal" title="${isViewAllowed(user, 'portal') ? 'Portal de Entrega de Exames ao Paciente & Médico' : '🔒 Módulo Restrito para ' + user.role}">
           <i data-lucide="globe"></i>
         </div>
-        <div class="nav-item ${state.currentView === 'crud' ? 'active' : ''}" id="navCrud" title="Central de Cadastros & Tabelas do Sistema (CRUD)">
+        <div class="nav-item ${state.currentView === 'crud' ? 'active' : ''} ${!isViewAllowed(user, 'crud') ? 'disabled-rbac' : ''}" id="navCrud" title="${isViewAllowed(user, 'crud') ? 'Central de Cadastros & Tabelas do Sistema (CRUD)' : '🔒 Módulo Restrito para ' + user.role}">
           <i data-lucide="folder-open"></i>
         </div>
-        <div class="nav-item ${state.currentView === 'billing' ? 'active' : ''}" id="navBilling" title="Faturamento TUSS, Guias TISS & Convênios">
+        <div class="nav-item ${state.currentView === 'billing' ? 'active' : ''} ${!isViewAllowed(user, 'billing') ? 'disabled-rbac' : ''}" id="navBilling" title="${isViewAllowed(user, 'billing') ? 'Faturamento TUSS, Guias TISS & Convênios' : '🔒 Módulo Restrito para ' + user.role}">
           <i data-lucide="dollar-sign"></i>
         </div>
-        <div class="nav-item ${state.currentView === 'settings' ? 'active' : ''}" id="navSettings" title="Configurações do Servidor DICOM & Clínica">
+        <div class="nav-item ${state.currentView === 'settings' ? 'active' : ''} ${!isViewAllowed(user, 'settings') ? 'disabled-rbac' : ''}" id="navSettings" title="${isViewAllowed(user, 'settings') ? 'Configurações do Servidor DICOM & Clínica' : '🔒 Módulo Restrito para ' + user.role}">
           <i data-lucide="settings"></i>
         </div>
       </nav>
@@ -127,8 +140,11 @@ function init() {
       applyFilters();
       switchView('worklist');
     },
-    onSelectUserRole: (user) => {
-      state.currentUser = user;
+    onSelectUserRole: (selectedUser) => {
+      state.currentUser = selectedUser;
+      const firstAllowed = selectedUser.allowedViews ? selectedUser.allowedViews[0] : 'worklist';
+      showToast(`👤 Perfil alternado para ${selectedUser.name} (${selectedUser.role}).`, 'info');
+      switchView(firstAllowed);
       init();
     },
     onToggleCollapseHeader: (collapsed) => {
@@ -143,20 +159,20 @@ function init() {
           applyFilters();
           switchView('worklist');
         },
-        onSelectUserRole: (user) => {
-          state.currentUser = user;
+        onSelectUserRole: (u) => {
+          state.currentUser = u;
           init();
         },
         onToggleCollapseHeader: (c) => {
           state.headerCollapsed = c;
           init();
         },
-        onGoHome: () => switchView('worklist'),
+        onGoHome: () => switchView(state.currentUser.allowedViews ? state.currentUser.allowedViews[0] : 'worklist'),
         onLogout: handleLogout
       });
       refreshIcons();
     },
-    onGoHome: () => switchView('worklist'),
+    onGoHome: () => switchView(state.currentUser.allowedViews ? state.currentUser.allowedViews[0] : 'worklist'),
     onLogout: handleLogout
   });
 
@@ -221,7 +237,7 @@ function handleLogout() {
 function refreshIcons() {
   createIcons({
     icons: {
-      Activity, Search, ListFilter, Eye, FileText, UploadCloud, Sun, Ruler, CircleDot, ZoomIn, Move, Contrast, RotateCcw, RotateCw, Play, Pause, Sparkles, FileCheck2, Mic, Save, Printer, ShieldCheck, RadioReceiver, X, FolderOpen, Inbox, Columns, Loader, User, Lock, LogIn, LogOut, Calendar, CreditCard, Settings, UserPlus, Download, Building, Camera, Power, Video, Globe, ArrowLeft, ArrowRight, Share2, Send, Clock, Maximize2, Columns2, Keyboard, Edit, Trash2, DollarSign, LayoutDashboard, FilePlus, Triangle, ArrowUpRight, History, UserCheck, Key, BarChart2, ChevronUp, ChevronDown
+      Activity, Search, ListFilter, Eye, FileText, UploadCloud, Sun, Ruler, CircleDot, ZoomIn, Move, Contrast, RotateCcw, RotateCw, Play, Pause, Sparkles, FileCheck2, Mic, Save, Printer, ShieldCheck, RadioReceiver, X, FolderOpen, Inbox, Columns, Loader, User, Lock, LogIn, LogOut, Calendar, CreditCard, Settings, UserPlus, Download, Building, Camera, Power, Video, Globe, ArrowLeft, ArrowRight, Share2, Send, Clock, Maximize2, Columns2, Keyboard, Edit, Trash2, DollarSign, LayoutDashboard, FilePlus, Triangle, ArrowUpRight, History, UserCheck, Key, BarChart2, ChevronUp, ChevronDown, LockKeyhole
     }
   });
 }
@@ -261,21 +277,26 @@ function handleSelectModality(modality) {
       applyFilters();
       switchView('worklist');
     },
-    onSelectUserRole: (user) => {
-      state.currentUser = user;
+    onSelectUserRole: (u) => {
+      state.currentUser = u;
       init();
     },
     onToggleCollapseHeader: (c) => {
       state.headerCollapsed = c;
       init();
     },
-    onGoHome: () => switchView('worklist'),
+    onGoHome: () => switchView(state.currentUser.allowedViews ? state.currentUser.allowedViews[0] : 'worklist'),
     onLogout: handleLogout
   });
   refreshIcons();
 }
 
 function switchView(viewName, studyId = null) {
+  if (!isViewAllowed(state.currentUser, viewName)) {
+    showToast(`🔒 Acesso Restrito: A função '${state.currentUser.role}' não possui permissão para este módulo.`, 'warning');
+    return;
+  }
+
   if ((state.currentView === 'viewer' || state.currentView === 'split') && viewName !== 'viewer' && viewName !== 'split') {
     stopActiveVideoCapture();
   }

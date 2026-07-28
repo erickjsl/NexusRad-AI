@@ -84,6 +84,12 @@ export function loadPersistentState(state) {
       saveAgreementsToStorage(state.customAgreements);
     }
 
+    // 6. Load Settings Config
+    const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    if (savedSettings) {
+      state.settingsConfig = JSON.parse(savedSettings);
+    }
+
     state.filteredStudies = [...state.studies];
   } catch (err) {
     console.error("Error loading persistent state from localStorage:", err);
@@ -127,5 +133,13 @@ export function saveAgreementsToStorage(agreements) {
     localStorage.setItem(STORAGE_KEYS.AGREEMENTS, JSON.stringify(agreements));
   } catch (err) {
     console.error("Error saving agreements to localStorage:", err);
+  }
+}
+
+export function saveSettingsToStorage(settings) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+  } catch (err) {
+    console.error("Error saving settings to localStorage:", err);
   }
 }

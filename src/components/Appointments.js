@@ -1,9 +1,12 @@
 // ==========================================================================
 // NexusRad AI - Appointments, Reception & Text-to-Speech Voice Call
+// Integrates Custom Voice Selection from System Settings
 // ==========================================================================
 
 import jsPDF from 'jspdf';
 import { renderAppointmentModal } from './AppointmentModal.js';
+import { speakText } from '../utils/speechVoice.js';
+import { showToast } from '../utils/toast.js';
 
 export function renderAppointments(container, state, callbacks) {
   let appointments = state.appointmentsList || [];
@@ -137,7 +140,7 @@ export function renderAppointments(container, state, callbacks) {
       btn.addEventListener('click', () => {
         const name = btn.dataset.name;
         const room = btn.dataset.room;
-        speakPatientCall(name, room);
+        speakPatientCall(name, room, state);
       });
     });
 
@@ -153,19 +156,15 @@ export function renderAppointments(container, state, callbacks) {
   render();
 }
 
-function speakPatientCall(patientName, roomName) {
+function speakPatientCall(patientName, roomName, state = null) {
   const text = `Atenção paciente ${patientName}, por favor dirigir-se à ${roomName}.`;
+  const cfg = state && state.settingsConfig ? state.settingsConfig : {};
+  const voiceUri = cfg.selectedVoiceUri || null;
+  const rate = cfg.voiceRate || 0.95;
+  const pitch = cfg.voicePitch || 1.0;
 
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'pt-BR';
-    utterance.rate = 0.95;
-    utterance.pitch = 1.0;
-    window.speechSynthesis.speak(utterance);
-  }
-
-  alert(`📢 PAINEL DE TV DA RECEPÇÃO:\n"${text}"`);
+  speakText(text, voiceUri, rate, pitch);
+  showToast(`📢 PAINEL DE TV: "${text}"`, "info");
 }
 
 function printProtocolTicket(study) {
