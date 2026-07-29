@@ -170,11 +170,13 @@ function init() {
           init();
         },
         onGoHome: () => switchView(state.currentUser.allowedViews ? state.currentUser.allowedViews[0] : 'worklist'),
+        onToggleViewMode: (view) => switchView(view),
         onLogout: handleLogout
       });
       refreshIcons();
     },
     onGoHome: () => switchView(state.currentUser.allowedViews ? state.currentUser.allowedViews[0] : 'worklist'),
+    onToggleViewMode: (view) => switchView(view),
     onLogout: handleLogout
   });
 
@@ -287,6 +289,7 @@ function handleSelectModality(modality) {
       init();
     },
     onGoHome: () => switchView(state.currentUser.allowedViews ? state.currentUser.allowedViews[0] : 'worklist'),
+    onToggleViewMode: (view) => switchView(view),
     onLogout: handleLogout
   });
   refreshIcons();

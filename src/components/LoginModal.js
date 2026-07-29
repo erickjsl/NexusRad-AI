@@ -11,7 +11,7 @@ export const DEMO_USERS = [
     crm: "CRM/SP 142.890 • RQE 88.102",
     badge: "LAUDADOR MASTER",
     avatar: "👨‍⚕️",
-    allowedViews: ['dashboard', 'worklist', 'viewer', 'report', 'split', 'record']
+    allowedViews: ['dashboard', 'worklist', 'viewer', 'report', 'split', 'record', 'his', 'crud', 'billing', 'settings']
   },
   {
     username: "dra_patricia",
@@ -21,7 +21,7 @@ export const DEMO_USERS = [
     crm: "CRM/SP 189.430 • RQE 90.112",
     badge: "ULTRASSONOGRAFISTA",
     avatar: "👩‍⚕️",
-    allowedViews: ['worklist', 'viewer', 'report', 'split']
+    allowedViews: ['worklist', 'viewer', 'report', 'split', 'his', 'record']
   },
   {
     username: "recepcao",
@@ -31,7 +31,7 @@ export const DEMO_USERS = [
     crm: "MATRÍCULA 8804",
     badge: "RECEPÇÃO",
     avatar: "👩‍💼",
-    allowedViews: ['appointments', 'worklist', 'record', 'portal', 'crud']
+    allowedViews: ['appointments', 'worklist', 'record', 'portal', 'crud', 'his']
   },
   {
     username: "gestor",
@@ -41,7 +41,7 @@ export const DEMO_USERS = [
     crm: "CRA/SP 44091",
     badge: "GESTOR & FATURAMENTO",
     avatar: "👨‍💼",
-    allowedViews: ['dashboard', 'billing', 'crud', 'settings']
+    allowedViews: ['dashboard', 'billing', 'crud', 'settings', 'his', 'worklist', 'viewer', 'report']
   }
 ];
 
