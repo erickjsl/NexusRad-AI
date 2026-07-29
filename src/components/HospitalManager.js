@@ -4,10 +4,11 @@
 // Financeiro (DRE/Contas) & Farmácia Hospitalar
 // ==========================================================================
 
-import { createIcons, Activity, Bed, FileSpreadsheet, DollarSign, Package, UserPlus, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, Download, Plus, Trash2, Edit, Search, Printer } from 'lucide';
+import { createIcons, Activity, Bed, FileSpreadsheet, DollarSign, Package, UserPlus, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, Download, Plus, Trash2, Edit, Search, Printer, Volume2 } from 'lucide';
 import { showToast } from '../utils/toast.js';
 import { saveStudiesToStorage } from '../utils/storage.js';
 import { logAuditEvent } from '../utils/auditLogger.js';
+import { speakPatientCallWithChime, speakText, playHospitalChime } from '../utils/speechVoice.js';
 
 export function renderHospitalManager(container, state, callbacks) {
   let activeSubTab = 'manchester'; // 'manchester' | 'beds' | 'tiss' | 'financial' | 'pharmacy'
@@ -64,7 +65,7 @@ export function renderHospitalManager(container, state, callbacks) {
 
   function refreshIcons() {
     createIcons({
-      icons: { Activity, Bed, FileSpreadsheet, DollarSign, Package, UserPlus, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, Download, Plus, Trash2, Edit, Search, Printer }
+      icons: { Activity, Bed, FileSpreadsheet, DollarSign, Package, UserPlus, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, Download, Plus, Trash2, Edit, Search, Printer, Volume2 }
     });
   }
 
@@ -85,6 +86,9 @@ export function renderHospitalManager(container, state, callbacks) {
           </div>
 
           <div style="display: flex; gap: 0.5rem;">
+            <button class="btn-secondary" id="btnTestAudioPanel" style="border-color: var(--primary-cyan); color: var(--primary-cyan); font-weight: 700; padding: 0.55rem 0.85rem;" title="Testar áudio do sinal sonoro + voz no painel da recepção">
+              🔊 Testar Áudio TV
+            </button>
             <button class="btn-primary" id="btnQuickTriageModal" style="background: linear-gradient(135deg, #EF4444 0%, #F59E0B 100%); border: none; font-weight: 700; padding: 0.55rem 1rem;">
               🚨 + Nova Triagem PS
             </button>
@@ -184,9 +188,14 @@ export function renderHospitalManager(container, state, callbacks) {
                     <td><div style="max-width: 250px; font-size: 0.75rem; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${item.symptoms}</div></td>
                     <td><span class="badge-status concluido">${item.status}</span></td>
                     <td>
-                      <button class="btn-primary btn-call-consult" data-index="${idx}" style="font-size: 0.72rem; padding: 4px 8px; background: var(--primary-cyan); color: #000; font-weight: 700; border: none;">
-                        👨‍⚕️ Chamar Médico
-                      </button>
+                      <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                        <button class="btn-secondary btn-call-triage" data-index="${idx}" style="font-size: 0.7rem; padding: 3px 6px; border-color: #EF4444; color: #EF4444; font-weight: 700;">
+                          🔊 Chamar Triagem
+                        </button>
+                        <button class="btn-primary btn-call-consult" data-index="${idx}" style="font-size: 0.7rem; padding: 3px 6px; background: var(--primary-cyan); color: #000; font-weight: 700; border: none;">
+                          👨‍⚕️ Chamar Médico
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 `).join('')}
@@ -368,13 +377,34 @@ export function renderHospitalManager(container, state, callbacks) {
   }
 
   function attachHisEvents() {
-    // Triage Action
+    // Audio Test Panel Action
+    container.querySelector('#btnTestAudioPanel')?.addEventListener('click', () => {
+      const phrase = "Atenção: Teste do Sinal Sonoro e Painel de Convocação por Voz do Sistema Hospitalar NexusRad AI.";
+      speakPatientCallWithChime(phrase);
+      showToast("🔊 Teste do Painel TV acionado! (Sinal Sonoro + Voz)", "info");
+    });
+
+    // Call for Triage Action
+    container.querySelectorAll('.btn-call-triage').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.index);
+        const item = state.hisData.triageQueue[idx];
+        const phrase = `Atenção paciente ${item.patientName}, favor dirigir-se à Sala de Triagem Manchester.`;
+        speakPatientCallWithChime(phrase);
+        showToast(`🔊 PAINEL TV: "${phrase}"`, 'info');
+        logAuditEvent('PATIENT_CALLED_TRIAGE', phrase);
+      });
+    });
+
+    // Call for Doctor Action
     container.querySelectorAll('.btn-call-consult').forEach(btn => {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index);
         const item = state.hisData.triageQueue[idx];
-        showToast(`📢 Paciente ${item.patientName} chamado no Painel da Recepção!`, 'success');
-        logAuditEvent('PATIENT_CALLED_TRIAGE', `Paciente ${item.patientName} chamado na Triagem Manchester.`);
+        const phrase = `Atenção paciente ${item.patientName}, favor dirigir-se ao Consultório Médico 01 com o Doutor Carlos Mendonça.`;
+        speakPatientCallWithChime(phrase);
+        showToast(`📢 PAINEL TV: "${phrase}"`, 'success');
+        logAuditEvent('PATIENT_CALLED_DOCTOR', phrase);
       });
     });
 
