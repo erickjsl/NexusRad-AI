@@ -395,16 +395,7 @@ export function renderHospitalManager(container, state, callbacks) {
     container.querySelectorAll('.btn-occupy-bed').forEach(btn => {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index);
-        const bed = state.hisData.beds[idx];
-        const pName = prompt("Informe o nome do paciente a ser internado:", "ERICK LIMA");
-        if (pName) {
-          bed.status = 'ocupado';
-          bed.patientName = pName.toUpperCase();
-          bed.doctor = "Dr. Carlos Mendonça";
-          bed.admissionDate = new Date().toLocaleString();
-          render();
-          showToast(`📥 Paciente ${pName.toUpperCase()} internado com sucesso no leito ${bed.bedNumber}!`, 'success');
-        }
+        openAdmitModal(idx);
       });
     });
 
@@ -424,7 +415,362 @@ export function renderHospitalManager(container, state, callbacks) {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index);
         const batch = state.hisData.tissBatches[idx];
-        const xmlContent = `<?xml version="1.0" encoding="ISO-8859-1"?>
+        downloadTissXmlFile(batch);
+      });
+    });
+
+    // Quick Triage Modal Button
+    container.querySelector('#btnQuickTriageModal')?.addEventListener('click', () => {
+      openTriageModal();
+    });
+
+    // Admit Patient Modal Button
+    container.querySelector('#btnAdmitPatientBed')?.addEventListener('click', () => {
+      openAdmitModal();
+    });
+
+    // Generate TISS Batch Modal Button
+    container.querySelector('#btnGenerateTissBatch')?.addEventListener('click', () => {
+      openGenerateTissModal();
+    });
+
+    container.querySelector('#btnExportTissBatch')?.addEventListener('click', () => {
+      openGenerateTissModal();
+    });
+
+    // Add Pharmacy Item Modal Button
+    container.querySelector('#btnAddPharmacyItem')?.addEventListener('click', () => {
+      openPharmacyModal();
+    });
+  }
+
+  // ==========================================================================
+  // Interactive Modals for Full HIS Workflow
+  // ==========================================================================
+
+  function openTriageModal() {
+    const modalBackdrop = document.createElement('div');
+    modalBackdrop.className = 'modal-backdrop open';
+    modalBackdrop.innerHTML = `
+      <div class="modal-card" style="max-width: 620px; width: 92%; display: flex; flex-direction: column; gap: 1rem; background: #0A0F1D; border: 1px solid #EF4444; box-shadow: 0 0 30px rgba(239, 68, 68, 0.25);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 700; color: #EF4444;">🚨 Nova Triagem de Manchester & Classificação de Risco</h3>
+          <button class="btn-icon" id="closeHisModal" style="color: #FFF; font-weight: 700;">✕</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Nome Completo do Paciente:</label>
+            <input type="text" id="tName" class="form-select" value="ERICK LIMA" placeholder="Ex: MAURÍCIO FERREIRA DE SOUZA">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0.5rem;">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.7rem; color: var(--text-muted);">PA (mmHg):</label>
+              <input type="text" id="tBp" class="form-select" value="130/85">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.7rem; color: var(--text-muted);">FC (bpm):</label>
+              <input type="text" id="tHr" class="form-select" value="84">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.7rem; color: var(--text-muted);">SpO2 (%):</label>
+              <input type="text" id="tSpo2" class="form-select" value="98%">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.7rem; color: var(--text-muted);">Dor (0-10):</label>
+              <input type="text" id="tPain" class="form-select" value="6">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Queixa Principal & Sintomas Observados:</label>
+            <textarea id="tSymptoms" class="form-select" style="height: 60px;">Dor abdominal difusa de início súbito acompanhada de náuseas leves.</textarea>
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Classificação de Risco (Protocolo Manchester):</label>
+            <select id="tColor" class="form-select" style="font-weight: 700;">
+              <option value="red" style="color: #EF4444;">🔴 EMERGENCY — Vermelho (Atendimento Imediato)</option>
+              <option value="orange" style="color: #F59E0B;">🟠 MUITO URGENTE — Laranja (Atendimento em 10 min)</option>
+              <option value="yellow" selected style="color: #EAB308;">🟡 URGENTE — Amarelo (Atendimento em 60 min)</option>
+              <option value="green" style="color: #10B981;">🟢 POUCO URGENTE — Verde (Atendimento em 120 min)</option>
+              <option value="blue" style="color: #3B82F6;">🔵 NÃO URGENTE — Azul (Atendimento em 240 min)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+          <button class="btn-secondary" id="cancelHisModal">Cancelar</button>
+          <button class="btn-primary" id="saveTriageBtn" style="background: #EF4444; border-color: #EF4444; font-weight: 700;">
+            🚨 Salvar Triagem & Gerar Senha
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalBackdrop);
+
+    const close = () => modalBackdrop.remove();
+    modalBackdrop.querySelector('#closeHisModal').addEventListener('click', close);
+    modalBackdrop.querySelector('#cancelHisModal').addEventListener('click', close);
+
+    modalBackdrop.querySelector('#saveTriageBtn').addEventListener('click', () => {
+      const name = modalBackdrop.querySelector('#tName').value.trim().toUpperCase() || "NOVO PACIENTE PS";
+      const bp = modalBackdrop.querySelector('#tBp').value;
+      const hr = modalBackdrop.querySelector('#tHr').value;
+      const spo2 = modalBackdrop.querySelector('#tSpo2').value;
+      const symptoms = modalBackdrop.querySelector('#tSymptoms').value;
+      const color = modalBackdrop.querySelector('#tColor').value;
+
+      const labels = {
+        red: "EMERGÊNCIA (Vermelho)",
+        orange: "MUITO URGENTE (Laranja)",
+        yellow: "URGENTE (Amarelo)",
+        green: "POUCO URGENTE (Verde)",
+        blue: "NÃO URGENTE (Azul)"
+      };
+
+      state.hisData.triageQueue.unshift({
+        id: `TRI-${Math.floor(100 + Math.random() * 900)}`,
+        patientName: name,
+        age: "38a",
+        gender: "M",
+        time: new Date().toLocaleTimeString().slice(0, 5),
+        color: color,
+        label: labels[color],
+        symptoms: symptoms,
+        bp: bp,
+        hr: `${hr} bpm`,
+        spo2: spo2,
+        status: "Aguardando Médico"
+      });
+
+      close();
+      render();
+      showToast(`🚨 Triagem de ${name} salva! Classificação: ${labels[color]}.`, 'success');
+      logAuditEvent('TRIAGE_CREATED', `Triagem Manchester criada para ${name} [${labels[color]}]`);
+    });
+  }
+
+  function openAdmitModal(targetBedIdx = null) {
+    const vagoBeds = state.hisData.beds.filter(b => b.status === 'vago');
+    const modalBackdrop = document.createElement('div');
+    modalBackdrop.className = 'modal-backdrop open';
+
+    modalBackdrop.innerHTML = `
+      <div class="modal-card" style="max-width: 550px; width: 92%; display: flex; flex-direction: column; gap: 1rem; background: #0A0F1D; border: 1px solid var(--primary-cyan); box-shadow: 0 0 30px rgba(0, 229, 255, 0.25);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--primary-cyan);">📥 Efetivar Internação Hospitalar em Leito</h3>
+          <button class="btn-icon" id="closeHisModal" style="color: #FFF; font-weight: 700;">✕</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Selecionar Paciente para Internação:</label>
+            <input type="text" id="admitPatientName" class="form-select" value="ERICK LIMA" placeholder="Ex: ERICK LIMA">
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Selecionar Leito Disponível:</label>
+            <select id="admitBedSelect" class="form-select">
+              ${state.hisData.beds.map((b, i) => `
+                <option value="${i}" ${targetBedIdx === i ? 'selected' : b.status !== 'vago' ? 'disabled' : ''}>
+                  ${b.sector} — ${b.bedNumber} [${b.status.toUpperCase()}]
+                </option>
+              `).join('')}
+            </select>
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Médico Responsável da Internação:</label>
+            <select id="admitDoctorSelect" class="form-select">
+              <option value="Dr. Carlos Mendonça">Dr. Carlos Mendonça (Radiologia / Internação)</option>
+              <option value="Dra. Renata Vasconcelos">Dra. Renata Vasconcelos (Ultrassonografia / UTI)</option>
+              <option value="Dr. Marcelo Ramos">Dr. Marcelo Ramos (Neurorradiologia)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+          <button class="btn-secondary" id="cancelHisModal">Cancelar</button>
+          <button class="btn-primary" id="saveAdmitBtn" style="background: var(--status-ready); border-color: var(--status-ready); font-weight: 700;">
+            📥 Efetivar Internação no Leito
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalBackdrop);
+
+    const close = () => modalBackdrop.remove();
+    modalBackdrop.querySelector('#closeHisModal').addEventListener('click', close);
+    modalBackdrop.querySelector('#cancelHisModal').addEventListener('click', close);
+
+    modalBackdrop.querySelector('#saveAdmitBtn').addEventListener('click', () => {
+      const idx = parseInt(modalBackdrop.querySelector('#admitBedSelect').value);
+      const name = modalBackdrop.querySelector('#admitPatientName').value.trim().toUpperCase() || "PACIENTE INTERNADO";
+      const doctor = modalBackdrop.querySelector('#admitDoctorSelect').value;
+
+      const bed = state.hisData.beds[idx];
+      if (bed) {
+        bed.status = 'ocupado';
+        bed.patientName = name;
+        bed.doctor = doctor;
+        bed.admissionDate = new Date().toLocaleString();
+
+        close();
+        render();
+        showToast(`📥 Paciente ${name} internado no leito ${bed.bedNumber}!`, 'success');
+        logAuditEvent('BED_ADMISSION', `Internação do paciente ${name} no leito ${bed.bedNumber} (${bed.sector})`);
+      }
+    });
+  }
+
+  function openGenerateTissModal() {
+    const modalBackdrop = document.createElement('div');
+    modalBackdrop.className = 'modal-backdrop open';
+
+    modalBackdrop.innerHTML = `
+      <div class="modal-card" style="max-width: 550px; width: 92%; display: flex; flex-direction: column; gap: 1rem; background: #0A0F1D; border: 1px solid #10B981; box-shadow: 0 0 30px rgba(16, 185, 129, 0.25);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 700; color: #10B981;">⚡ Gerar Lote XML TISS 4.01 (Padrão ANS)</h3>
+          <button class="btn-icon" id="closeHisModal" style="color: #FFF; font-weight: 700;">✕</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Operadora / Convênio Médico:</label>
+            <select id="tissAgreementSelect" class="form-select">
+              <option value="Bradesco Saúde S/A">Bradesco Saúde S/A</option>
+              <option value="Unimed Nacional">Unimed Nacional</option>
+              <option value="SulAmérica Saúde">SulAmérica Saúde</option>
+              <option value="Amil Assistência Médica">Amil Assistência Médica</option>
+              <option value="SUS - Governo Federal">SUS - Sistema Único de Saúde</option>
+            </select>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.75rem; color: var(--text-muted);">Competência / Mês:</label>
+              <input type="text" class="form-select" value="Julho / 2026" readonly style="opacity: 0.8;">
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.75rem; color: var(--text-muted);">Padrão TISS ANS:</label>
+              <input type="text" class="form-select" value="TISS v4.01.00" readonly style="opacity: 0.8;">
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+          <button class="btn-secondary" id="cancelHisModal">Cancelar</button>
+          <button class="btn-primary" id="saveTissBtn" style="background: #10B981; border-color: #10B981; font-weight: 700;">
+            ⚡ Gerar & Baixar XML TISS
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalBackdrop);
+
+    const close = () => modalBackdrop.remove();
+    modalBackdrop.querySelector('#closeHisModal').addEventListener('click', close);
+    modalBackdrop.querySelector('#cancelHisModal').addEventListener('click', close);
+
+    modalBackdrop.querySelector('#saveTissBtn').addEventListener('click', () => {
+      const agreement = modalBackdrop.querySelector('#tissAgreementSelect').value;
+      const newBatch = {
+        id: `LOTE-2026-${Math.floor(100 + Math.random() * 900)}`,
+        agreement: agreement,
+        count: Math.floor(15 + Math.random() * 30),
+        totalValue: `R$ ${(Math.random() * 30000 + 10000).toFixed(2).replace('.', ',')}`,
+        date: new Date().toLocaleDateString(),
+        status: "PRONTO PARA ENVIO (XML TISS 4.01)"
+      };
+
+      state.hisData.tissBatches.unshift(newBatch);
+      close();
+      render();
+      downloadTissXmlFile(newBatch);
+    });
+  }
+
+  function openPharmacyModal() {
+    const modalBackdrop = document.createElement('div');
+    modalBackdrop.className = 'modal-backdrop open';
+
+    modalBackdrop.innerHTML = `
+      <div class="modal-card" style="max-width: 550px; width: 92%; display: flex; flex-direction: column; gap: 1rem; background: #0A0F1D; border: 1px solid #A855F7; box-shadow: 0 0 30px rgba(168, 85, 247, 0.25);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 700; color: #A855F7;">💊 Dar Entrada de Insumo na Farmácia Hospitalar</h3>
+          <button class="btn-icon" id="closeHisModal" style="color: #FFF; font-weight: 700;">✕</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Nome do Medicamento / Insumo:</label>
+            <input type="text" id="phName" class="form-select" placeholder="Ex: Contraste Iopamida 300mg/ml" value="Contraste Iopamida 300mg/ml 100ml">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.75rem; color: var(--text-muted);">Categoria:</label>
+              <select id="phCat" class="form-select">
+                <option value="Contraste TC/RX">Contraste TC/RX</option>
+                <option value="Contraste RM">Contraste RM</option>
+                <option value="Analgésico">Analgésico / Injetável</option>
+                <option value="Insumo US">Insumo US (Gel / Capas)</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.75rem; color: var(--text-muted);">Quantidade de Entrada:</label>
+              <input type="number" id="phQty" class="form-select" value="50">
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+          <button class="btn-secondary" id="cancelHisModal">Cancelar</button>
+          <button class="btn-primary" id="savePharmacyBtn" style="background: #A855F7; border-color: #A855F7; font-weight: 700;">
+            💊 Gravar Entrada no Estoque
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalBackdrop);
+
+    const close = () => modalBackdrop.remove();
+    modalBackdrop.querySelector('#closeHisModal').addEventListener('click', close);
+    modalBackdrop.querySelector('#cancelHisModal').addEventListener('click', close);
+
+    modalBackdrop.querySelector('#savePharmacyBtn').addEventListener('click', () => {
+      const name = modalBackdrop.querySelector('#phName').value.trim();
+      const cat = modalBackdrop.querySelector('#phCat').value;
+      const qty = parseInt(modalBackdrop.querySelector('#phQty').value) || 10;
+
+      state.hisData.pharmacy.unshift({
+        id: `MED-${Math.floor(100 + Math.random() * 900)}`,
+        name: name,
+        category: cat,
+        stock: qty,
+        minStock: 20,
+        unit: "Frasco",
+        expDate: "12/2028",
+        status: "OK"
+      });
+
+      close();
+      render();
+      showToast(`💊 Entrada de ${qty} unidade(s) de "${name}" realizada!`, 'success');
+      logAuditEvent('PHARMACY_STOCK_ADDED', `Entrada de estoque farmácia: ${name} (${qty} un)`);
+    });
+  }
+
+  function downloadTissXmlFile(batch) {
+    const xmlContent = `<?xml version="1.0" encoding="ISO-8859-1"?>
 <ans:mensagemTISS xmlns:ans="http://www.ans.gov.br/padroes/tiss/schemas">
   <ans:cabecalho>
     <ans:identificacaoTransacao>
@@ -445,43 +791,15 @@ export function renderHospitalManager(container, state, callbacks) {
   </ans:prestadorParaOperadora>
 </ans:mensagemTISS>`;
 
-        const blob = new Blob([xmlContent], { type: 'application/xml' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `TISS_ANS_${batch.id}_${batch.agreement.replace(/\s+/g, '_')}.xml`;
-        a.click();
-        URL.revokeObjectURL(url);
-        showToast(`📥 Lote XML TISS 4.01 (${batch.id}) gerado e baixado com sucesso!`, 'success');
-        logAuditEvent('TISS_XML_EXPORTED', `Exportação de lote TISS XML ANS ${batch.id} para o convênio ${batch.agreement}`);
-      });
-    });
-
-    container.querySelector('#btnQuickTriageModal')?.addEventListener('click', () => {
-      const name = prompt("Informe o nome do paciente para Triagem de Manchester:", "NOVO PACIENTE PS");
-      if (name) {
-        state.hisData.triageQueue.unshift({
-          id: `TRI-${Math.floor(100 + Math.random() * 900)}`,
-          patientName: name.toUpperCase(),
-          age: "40a",
-          gender: "M",
-          time: new Date().toLocaleTimeString().slice(0, 5),
-          color: "yellow",
-          label: "URGENTE (Amarelo)",
-          symptoms: "Dor forte em observação médica",
-          bp: "130/85",
-          hr: "84 bpm",
-          spo2: "98%",
-          status: "Aguardando Consulta"
-        });
-        render();
-        showToast(`🚨 Triagem de Manchester criada com sucesso para ${name.toUpperCase()}!`, 'success');
-      }
-    });
-
-    container.querySelector('#btnExportTissBatch')?.addEventListener('click', () => {
-      showToast("⚡ Lote TISS XML 4.01 de todos os convênios gerado com sucesso para a ANS!", 'success');
-    });
+    const blob = new Blob([xmlContent], { type: 'application/xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `TISS_ANS_${batch.id}_${batch.agreement.replace(/\s+/g, '_')}.xml`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`📥 Lote XML TISS 4.01 (${batch.id}) baixado com sucesso!`, 'success');
+    logAuditEvent('TISS_XML_EXPORTED', `Exportação de lote TISS XML ANS ${batch.id} para o convênio ${batch.agreement}`);
   }
 
   function getColorBg(color) {
