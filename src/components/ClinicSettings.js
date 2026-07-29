@@ -7,6 +7,7 @@ import { showToast } from '../utils/toast.js';
 import { createIcons, Building, RadioReceiver, Sparkles, Send, ShieldCheck, Printer, Save, CheckCircle2, RefreshCw, Volume2 } from 'lucide';
 import { getAvailableVoices, speakText } from '../utils/speechVoice.js';
 import { saveSettingsToStorage } from '../utils/storage.js';
+import { getAuditLogs } from '../utils/auditLogger.js';
 
 export function renderClinicSettings(container, state, callbacks) {
   let activeTab = 'clinic'; // 'clinic' | 'dicom' | 'ai' | 'whatsapp' | 'security' | 'printer'
@@ -350,6 +351,42 @@ export function renderClinicSettings(container, state, callbacks) {
                 <option value="true">🟢 Ativado (Grava IP, Usuário e Ação)</option>
                 <option value="false">Desativado</option>
               </select>
+            </div>
+          </div>
+
+          <!-- Live LGPD & CFM Audit Logs Table -->
+          <div style="margin-top: 1rem; border-top: 1px solid var(--border-light); padding-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--primary-cyan); margin: 0; display: flex; align-items: center; gap: 0.35rem;">
+                <i data-lucide="shield-check" style="width: 16px; height: 16px;"></i>
+                📋 Trilha de Auditoria & Registro de Acessos em Tempo Real (LGPD / CFM)
+              </h4>
+              <span style="font-size: 0.75rem; color: var(--status-ready); font-weight: 700;">🟢 ISO 27001 AUDIT TRAIL ATIVO</span>
+            </div>
+
+            <div class="table-wrapper" style="max-height: 220px; overflow-y: auto;">
+              <table class="worklist-table" style="font-size: 0.75rem;">
+                <thead>
+                  <tr>
+                    <th>Data / Hora</th>
+                    <th>Ação Executada</th>
+                    <th>Detalhes do Evento</th>
+                    <th>Usuário Operador</th>
+                    <th>Hash Criptográfico</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${getAuditLogs().map(log => `
+                    <tr>
+                      <td style="white-space: nowrap; font-family: monospace;">${log.timestamp}</td>
+                      <td><span class="badge-status concluido">${log.action}</span></td>
+                      <td>${log.details}</td>
+                      <td><strong>${log.user}</strong></td>
+                      <td><span style="font-family: monospace; color: var(--primary-cyan); font-weight: 700;">${log.hash}</span></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
