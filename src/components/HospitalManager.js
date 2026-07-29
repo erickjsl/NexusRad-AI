@@ -1,22 +1,22 @@
 // ==========================================================================
 // NexusRad AI - Enterprise HIS 360° (Hospital Information System)
-// Complete Modules: Triagem Manchester, Mapa de Leitos, Faturamento TISS XML,
-// Financeiro (DRE/Contas) & Farmácia Hospitalar
+// Complete 8 Modules: Manchester Triage, Bed Map (Census), Surgical Suite,
+// LIS Laboratory, TISS XML Billing, Financial DRE, Pharmacy & PEP Inpatient
 // ==========================================================================
 
-import { createIcons, Activity, Bed, FileSpreadsheet, DollarSign, Package, UserPlus, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, Download, Plus, Trash2, Edit, Search, Printer, Volume2 } from 'lucide';
+import { createIcons, Activity, Bed, FileSpreadsheet, DollarSign, Package, UserPlus, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, Download, Plus, Trash2, Edit, Search, Printer, Volume2, Syringe, TestTube, Stethoscope, ClipboardList, Clock, Layers } from 'lucide';
 import { showToast } from '../utils/toast.js';
 import { saveStudiesToStorage } from '../utils/storage.js';
 import { logAuditEvent } from '../utils/auditLogger.js';
 import { speakPatientCallWithChime, speakText, playHospitalChime } from '../utils/speechVoice.js';
 
 export function renderHospitalManager(container, state, callbacks) {
-  let activeSubTab = 'manchester'; // 'manchester' | 'beds' | 'tiss' | 'financial' | 'pharmacy'
+  let activeSubTab = 'manchester'; // 'manchester' | 'beds' | 'surgery' | 'lab' | 'tiss' | 'financial' | 'pharmacy' | 'pep'
 
-  // Mock State for HIS
+  // Initialize HIS State
   if (!state.hisData) {
     state.hisData = {
-      // Manchester Triage Queue
+      // 1. Manchester Triage Queue
       triageQueue: [
         { id: "TRI-901", patientName: "MAURÍCIO FERREIRA DE SOUZA", age: "54a", gender: "M", time: "10:14", color: "red", label: "EMERGÊNCIA (Vermelho)", symptoms: "Dor torácica intensa com irradiação para braço esquerdo, sudorese fria", bp: "160/100", hr: "112 bpm", spo2: "92%", status: "Atendimento Imediato" },
         { id: "TRI-902", patientName: "ANA LÚCIA TEIXEIRA", age: "42a", gender: "F", time: "10:22", color: "orange", label: "MUITO URGENTE (Laranja)", symptoms: "Cólica renal intensa refratária a analgésicos, disúria e hematúria", bp: "140/90", hr: "98 bpm", spo2: "98%", status: "Aguardando Médico" },
@@ -24,7 +24,7 @@ export function renderHospitalManager(container, state, callbacks) {
         { id: "TRI-904", patientName: "CAROLINA MENDES SANCHES", age: "29a", gender: "F", time: "10:45", color: "green", label: "POUCO URGENTE (Verde)", symptoms: "Sintomas gripais leves há 3 dias, febrícula", bp: "120/75", hr: "72 bpm", spo2: "99%", status: "Aguardando Consulta" }
       ],
 
-      // Hospital Bed Map (Census)
+      // 2. Hospital Bed Map (Census)
       beds: [
         { id: "UTI-01", sector: "UTI ADULTO", bedNumber: "Leito 01", patientName: "MAURÍCIO FERREIRA DE SOUZA", status: "ocupado", doctor: "Dr. Carlos Mendonça", admissionDate: "28/07/2026 10:30" },
         { id: "UTI-02", sector: "UTI ADULTO", bedNumber: "Leito 02", patientName: "ROBERTO ALVES DE OLIVEIRA", status: "ocupado", doctor: "Dr. Marcelo Ramos", admissionDate: "27/07/2026 14:15" },
@@ -39,7 +39,21 @@ export function renderHospitalManager(container, state, callbacks) {
         { id: "APT-202", sector: "APARTAMENTO VIP", bedNumber: "Apto 202", patientName: "-", status: "reservado", doctor: "Dr. Marcelo Ramos", admissionDate: "28/07/2026 14:00" }
       ],
 
-      // Financial Cashflow & TISS Batches
+      // 3. Surgical Suite (Bloco Operatório)
+      surgeries: [
+        { id: "CIR-301", room: "Sala Cirúrgica 01", patientName: "MAURÍCIO FERREIRA DE SOUZA", procedure: "Angioplastia Coronária com Stent", surgeon: "Dr. Roberto Mendonça", anesthetist: "Dr. Fernando Paes", time: "11:30", status: "EM ANDAMENTO" },
+        { id: "CIR-302", room: "Sala Cirúrgica 02", patientName: "ANA LÚCIA TEIXEIRA", procedure: "Ureterolitolapaxia a Laser", surgeon: "Dr. Carlos Mendonça", anesthetist: "Dra. Juliana Rocha", time: "14:00", status: "AGENDADA" },
+        { id: "CIR-303", room: "Sala Cirúrgica 03", patientName: "ERICK LIMA", procedure: "Colecistectomia Videolaparoscópica", surgeon: "Dra. Renata Vasconcelos", anesthetist: "Dr. Fernando Paes", time: "16:15", status: "AGENDADA" }
+      ],
+
+      // 4. LIS Laboratory Samples
+      labExams: [
+        { id: "LAB-8801", sampleId: "AMO-9012", patientName: "MAURÍCIO FERREIRA DE SOUZA", examName: "Troponina I + CK-MB + Gasometria Arterial", urgency: "ALTISSIMA", status: "LIBERADO", result: "Troponina I: 4.8 ng/mL (ELEVADA - IAM)" },
+        { id: "LAB-8802", sampleId: "AMO-9013", patientName: "ERICK LIMA", examName: "Hemograma Completo + PCR + TGO/TGP + Bilirrubinas", urgency: "ALTA", status: "EM ANÁLISE", result: "Leucócitos: 12.400 / mm³ (Leucocitose discreta)" },
+        { id: "LAB-8803", sampleId: "AMO-9014", patientName: "ANA LÚCIA TEIXEIRA", examName: "EAS (Urina I) + Urocultura com Antibiograma", urgency: "MÉDIA", status: "COLETADO", result: "Aguardando leitura de lâmina" }
+      ],
+
+      // 5. Financial Cashflow & TISS Batches
       tissBatches: [
         { id: "LOTE-2026-088", agreement: "Bradesco Saúde S/A", count: 42, totalValue: "R$ 38.450,00", date: "28/07/2026", status: "PRONTO PARA ENVIO (XML TISS 4.01)" },
         { id: "LOTE-2026-089", agreement: "Unimed Nacional", count: 35, totalValue: "R$ 29.800,00", date: "28/07/2026", status: "TRANSMITIDO (AGUARDANDO REPASSE)" },
@@ -53,19 +67,25 @@ export function renderHospitalManager(container, state, callbacks) {
         pendingInsurance: "R$ 98.450,00"
       },
 
-      // Pharmacy Inventory
+      // 6. Pharmacy Inventory
       pharmacy: [
         { id: "MED-001", name: "Contraste Radiológico Iopamida 300mg/ml 100ml", category: "Contraste TC/RX", stock: 145, minStock: 30, unit: "Frasco", expDate: "11/2027", status: "OK" },
         { id: "MED-002", name: "Contraste Gadolínio para Ressonância 15ml", category: "Contraste RM", stock: 82, minStock: 20, unit: "Ampola", expDate: "08/2028", status: "OK" },
         { id: "MED-003", name: "Dipirona Sódica 500mg/ml Injetável", category: "Analgésico", stock: 450, minStock: 100, unit: "Ampola", expDate: "04/2027", status: "OK" },
         { id: "MED-004", name: "Gel Ultrassonográfico Condutor 5Kg", category: "Insumo US", stock: 24, minStock: 10, unit: "Galão", expDate: "12/2026", status: "OK" }
+      ],
+
+      // 7. PEP Inpatient Evolutions
+      pepEvolutions: [
+        { id: "EVO-101", date: "28/07/2026 10:45", patientName: "MAURÍCIO FERREIRA DE SOUZA", author: "Dr. Carlos Mendonça (Cardiologia)", text: "Paciente admitido na UTI em pós-operatório imediato de Angioplastia Coronária com Stent em ADA. Estável hemodinamicamente, em uso de Dupla Antiagregação Plaquetária (AAS + Clopidogrel). PA 130/80 mmHg, FC 74 bpm. Mantido sob vigilância intensiva." },
+        { id: "EVO-102", date: "28/07/2026 09:15", patientName: "ERICK LIMA", author: "Dra. Renata Vasconcelos (Cirurgia Geral)", text: "Paciente em acompanhamento no Pronto Atendimento com quadro de Cólica Biliar. Ultrassonografia mostrou Colelitíase com cálculo impactado de 1.4 cm em infundíbulo biliar sem sinais de colecistite aguda grave. Indicado tratamento cirúrgico eletivo." }
       ]
     };
   }
 
   function refreshIcons() {
     createIcons({
-      icons: { Activity, Bed, FileSpreadsheet, DollarSign, Package, UserPlus, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, Download, Plus, Trash2, Edit, Search, Printer, Volume2 }
+      icons: { Activity, Bed, FileSpreadsheet, DollarSign, Package, UserPlus, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, Download, Plus, Trash2, Edit, Search, Printer, Volume2, Syringe, TestTube, Stethoscope, ClipboardList, Clock, Layers }
     });
   }
 
@@ -74,55 +94,73 @@ export function renderHospitalManager(container, state, callbacks) {
       <div style="flex: 1; display: flex; flex-direction: column; padding: 1.5rem; overflow-y: auto; gap: 1.25rem; background: var(--bg-dark); color: #FFF;">
         
         <!-- Header -->
-        <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
           <div>
             <h1 style="font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: #FFF;">
               <i data-lucide="activity" style="color: var(--primary-cyan)"></i>
               Módulo de Gestão Hospitalar 360° — HIS (Hospital Information System)
             </h1>
             <p style="color: var(--text-muted); font-size: 0.85rem;">
-              Pronto Atendimento (Triagem Manchester), Mapa de Leitos UTI/Enfermaria, Faturamento TISS XML ANS e Gestão Financeira.
+              Pronto Atendimento (Manchester), Censo de Leitos/UTI, Centro Cirúrgico, Laboratório LIS, Faturamento TISS, Financeiro e PEP.
             </p>
           </div>
 
-          <div style="display: flex; gap: 0.5rem;">
-            <button class="btn-secondary" id="btnTestAudioPanel" style="border-color: var(--primary-cyan); color: var(--primary-cyan); font-weight: 700; padding: 0.55rem 0.85rem;" title="Testar áudio do sinal sonoro + voz no painel da recepção">
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="btn-secondary" id="btnTestAudioPanel" style="border-color: var(--primary-cyan); color: var(--primary-cyan); font-weight: 700; padding: 0.5rem 0.85rem;" title="Testar áudio do sinal sonoro + voz no painel da recepção">
               🔊 Testar Áudio TV
             </button>
-            <button class="btn-primary" id="btnQuickTriageModal" style="background: linear-gradient(135deg, #EF4444 0%, #F59E0B 100%); border: none; font-weight: 700; padding: 0.55rem 1rem;">
+            <button class="btn-primary" id="btnQuickTriageModal" style="background: linear-gradient(135deg, #EF4444 0%, #F59E0B 100%); border: none; font-weight: 700; padding: 0.5rem 0.9rem;">
               🚨 + Nova Triagem PS
             </button>
-            <button class="btn-primary" id="btnExportTissBatch" style="background: linear-gradient(135deg, #00E5FF 0%, #3B82F6 100%); border: none; font-weight: 700; padding: 0.55rem 1rem;">
-              📥 Exportar Lote TISS XML (ANS)
+            <button class="btn-primary" id="btnQuickSurgeryModal" style="background: linear-gradient(135deg, #3B82F6 0%, #10B981 100%); border: none; font-weight: 700; padding: 0.5rem 0.9rem;">
+              🔪 + Agendar Cirurgia
+            </button>
+            <button class="btn-primary" id="btnExportTissBatch" style="background: linear-gradient(135deg, #00E5FF 0%, #3B82F6 100%); border: none; font-weight: 700; padding: 0.5rem 0.9rem;">
+              📥 Exportar Lote TISS XML
             </button>
           </div>
         </div>
 
-        <!-- HIS Navigation Tabs -->
-        <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem; flex-wrap: wrap;">
+        <!-- HIS Navigation Tabs (8 Modules) -->
+        <div style="display: flex; gap: 0.4rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem; flex-wrap: wrap;">
           <button class="btn-secondary nav-his-tab ${activeSubTab === 'manchester' ? 'active' : ''}" data-tab="manchester">
-            <i data-lucide="activity" style="width: 15px; height: 15px; color: #EF4444;"></i>
-            <span>🚨 1. Triagem de Manchester (${state.hisData.triageQueue.length})</span>
+            <i data-lucide="activity" style="width: 14px; height: 14px; color: #EF4444;"></i>
+            <span>🚨 1. Triagem Manchester (${state.hisData.triageQueue.length})</span>
           </button>
 
           <button class="btn-secondary nav-his-tab ${activeSubTab === 'beds' ? 'active' : ''}" data-tab="beds">
-            <i data-lucide="bed" style="width: 15px; height: 15px; color: var(--primary-cyan);"></i>
-            <span>🏥 2. Mapa de Leitos & Censo (${state.hisData.beds.filter(b => b.status === 'ocupado').length} Ocupados)</span>
+            <i data-lucide="bed" style="width: 14px; height: 14px; color: var(--primary-cyan);"></i>
+            <span>🏥 2. Mapa de Leitos (${state.hisData.beds.filter(b => b.status === 'ocupado').length} Ocupados)</span>
+          </button>
+
+          <button class="btn-secondary nav-his-tab ${activeSubTab === 'surgery' ? 'active' : ''}" data-tab="surgery">
+            <i data-lucide="stethoscope" style="width: 14px; height: 14px; color: #3B82F6;"></i>
+            <span>🔪 3. Centro Cirúrgico (${state.hisData.surgeries.length})</span>
+          </button>
+
+          <button class="btn-secondary nav-his-tab ${activeSubTab === 'lab' ? 'active' : ''}" data-tab="lab">
+            <i data-lucide="test-tube" style="width: 14px; height: 14px; color: #F59E0B;"></i>
+            <span>🧪 4. Laboratório LIS (${state.hisData.labExams.length})</span>
           </button>
 
           <button class="btn-secondary nav-his-tab ${activeSubTab === 'tiss' ? 'active' : ''}" data-tab="tiss">
-            <i data-lucide="file-spreadsheet" style="width: 15px; height: 15px; color: #10B981;"></i>
-            <span>💳 3. Faturamento TISS XML ANS</span>
+            <i data-lucide="file-spreadsheet" style="width: 14px; height: 14px; color: #10B981;"></i>
+            <span>💳 5. Faturamento TISS XML</span>
           </button>
 
           <button class="btn-secondary nav-his-tab ${activeSubTab === 'financial' ? 'active' : ''}" data-tab="financial">
-            <i data-lucide="dollar-sign" style="width: 15px; height: 15px; color: #F59E0B;"></i>
-            <span>💰 4. Financeiro & Fluxo de Caixa</span>
+            <i data-lucide="dollar-sign" style="width: 14px; height: 14px; color: #EAB308;"></i>
+            <span>💰 6. Financeiro & DRE</span>
           </button>
 
           <button class="btn-secondary nav-his-tab ${activeSubTab === 'pharmacy' ? 'active' : ''}" data-tab="pharmacy">
-            <i data-lucide="package" style="width: 15px; height: 15px; color: #A855F7;"></i>
-            <span>💊 5. Farmácia & Suprimentos</span>
+            <i data-lucide="package" style="width: 14px; height: 14px; color: #A855F7;"></i>
+            <span>💊 7. Farmácia Hospitalar</span>
+          </button>
+
+          <button class="btn-secondary nav-his-tab ${activeSubTab === 'pep' ? 'active' : ''}" data-tab="pep">
+            <i data-lucide="clipboard-list" style="width: 14px; height: 14px; color: #EC4899;"></i>
+            <span>📜 8. Prontuário Eletrônico PEP</span>
           </button>
         </div>
 
@@ -167,7 +205,7 @@ export function renderHospitalManager(container, state, callbacks) {
                   <th>Sinais Vitais (PA / FC / SpO2)</th>
                   <th>Queixa Principal & Sintomas</th>
                   <th>Situação Atual</th>
-                  <th>Ação Directa</th>
+                  <th>Ações de Chamada por Voz</th>
                 </tr>
               </thead>
               <tbody>
@@ -253,6 +291,88 @@ export function renderHospitalManager(container, state, callbacks) {
           </div>
         </div>
       `;
+    } else if (activeSubTab === 'surgery') {
+      return `
+        <div class="glass-card" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <h3 style="font-size: 1rem; font-weight: 700; color: #3B82F6; display: flex; align-items: center; gap: 0.4rem;">
+              🔪 Centro Cirúrgico & Escala do Bloco Operatório
+            </h3>
+            <button class="btn-primary" id="btnAddSurgery" style="font-size: 0.8rem; background: #3B82F6; border: none; font-weight: 700;">
+              + Agendar Nova Cirurgia
+            </button>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="worklist-table">
+              <thead>
+                <tr>
+                  <th>Sala Cirúrgica</th>
+                  <th>Paciente</th>
+                  <th>Procedimento Cirúrgico</th>
+                  <th>Cirurgião Principal</th>
+                  <th>Anestesista</th>
+                  <th>Horário</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${state.hisData.surgeries.map(s => `
+                  <tr>
+                    <td><strong style="color: var(--primary-cyan); font-family: monospace;">${s.room}</strong></td>
+                    <td><strong>${s.patientName}</strong></td>
+                    <td>${s.procedure}</td>
+                    <td>${s.surgeon}</td>
+                    <td>${s.anesthetist}</td>
+                    <td><span style="font-family: monospace;">${s.time}</span></td>
+                    <td><span class="badge-status laudando">${s.status}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    } else if (activeSubTab === 'lab') {
+      return `
+        <div class="glass-card" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <h3 style="font-size: 1rem; font-weight: 700; color: #F59E0B; display: flex; align-items: center; gap: 0.4rem;">
+              🧪 Laboratório de Análises Clínicas (LIS Integrado)
+            </h3>
+            <button class="btn-primary" id="btnAddLabExam" style="font-size: 0.8rem; background: #F59E0B; border: none; font-weight: 700;">
+              + Cadastrar Exame Laboratorial
+            </button>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="worklist-table">
+              <thead>
+                <tr>
+                  <th>Código / Amostra</th>
+                  <th>Paciente</th>
+                  <th>Exames Solicitados</th>
+                  <th>Urgência</th>
+                  <th>Resultado / Parecer Técnico</th>
+                  <th>Status LIS</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${state.hisData.labExams.map(lab => `
+                  <tr>
+                    <td><strong style="color: var(--primary-cyan); font-family: monospace;">${lab.id}</strong><br><span style="font-size: 0.68rem; color: var(--text-muted);">${lab.sampleId}</span></td>
+                    <td><strong>${lab.patientName}</strong></td>
+                    <td>${lab.examName}</td>
+                    <td><span style="font-weight: 800; font-size: 0.72rem; color: #EF4444;">${lab.urgency}</span></td>
+                    <td><div style="font-size: 0.75rem; color: #10B981; max-width: 280px; font-weight: 600;">${lab.result}</div></td>
+                    <td><span class="badge-status concluido">${lab.status}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
     } else if (activeSubTab === 'tiss') {
       return `
         <div class="glass-card" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem;">
@@ -303,7 +423,7 @@ export function renderHospitalManager(container, state, callbacks) {
       const fin = state.hisData.financialSummary;
       return `
         <div class="glass-card" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem;">
-          <h3 style="font-size: 1rem; font-weight: 700; color: #F59E0B; display: flex; align-items: center; gap: 0.4rem;">
+          <h3 style="font-size: 1rem; font-weight: 700; color: #EAB308; display: flex; align-items: center; gap: 0.4rem;">
             💰 Gestão Financeira Hospitalar, DRE & Fluxo de Caixa
           </h3>
 
@@ -370,6 +490,32 @@ export function renderHospitalManager(container, state, callbacks) {
                 `).join('')}
               </tbody>
             </table>
+          </div>
+        </div>
+      `;
+    } else if (activeSubTab === 'pep') {
+      return `
+        <div class="glass-card" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <h3 style="font-size: 1rem; font-weight: 700; color: #EC4899; display: flex; align-items: center; gap: 0.4rem;">
+              📜 Prontuário Eletrônico do Paciente (PEP — Evoluções Médicas)
+            </h3>
+            <button class="btn-primary" id="btnAddPepEvolution" style="font-size: 0.8rem; background: #EC4899; border: none; font-weight: 700;">
+              + Adicionar Nova Evolução Médica
+            </button>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            ${state.hisData.pepEvolutions.map(evo => `
+              <div style="background: #0B0F17; border: 1px solid var(--border-light); border-left: 4px solid #EC4899; border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.4rem;">
+                  <strong style="color: var(--primary-cyan); font-size: 0.9rem;">${evo.patientName}</strong>
+                  <span style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace;">${evo.date}</span>
+                </div>
+                <div style="font-size: 0.75rem; color: #F59E0B; font-weight: 700;">${evo.author}</div>
+                <div style="font-size: 0.82rem; color: #E2E8F0; line-height: 1.4;">${evo.text}</div>
+              </div>
+            `).join('')}
           </div>
         </div>
       `;
@@ -454,6 +600,24 @@ export function renderHospitalManager(container, state, callbacks) {
       openTriageModal();
     });
 
+    // Quick Surgery Modal Button
+    container.querySelector('#btnQuickSurgeryModal')?.addEventListener('click', () => {
+      openSurgeryModal();
+    });
+    container.querySelector('#btnAddSurgery')?.addEventListener('click', () => {
+      openSurgeryModal();
+    });
+
+    // Add Lab Exam Button
+    container.querySelector('#btnAddLabExam')?.addEventListener('click', () => {
+      openLabModal();
+    });
+
+    // Add PEP Evolution Button
+    container.querySelector('#btnAddPepEvolution')?.addEventListener('click', () => {
+      openPepModal();
+    });
+
     // Admit Patient Modal Button
     container.querySelector('#btnAdmitPatientBed')?.addEventListener('click', () => {
       openAdmitModal();
@@ -475,7 +639,7 @@ export function renderHospitalManager(container, state, callbacks) {
   }
 
   // ==========================================================================
-  // Interactive Modals for Full HIS Workflow
+  // Interactive Modals for Complete HIS Workflow
   // ==========================================================================
 
   function openTriageModal() {
@@ -583,8 +747,200 @@ export function renderHospitalManager(container, state, callbacks) {
     });
   }
 
+  function openSurgeryModal() {
+    const modalBackdrop = document.createElement('div');
+    modalBackdrop.className = 'modal-backdrop open';
+
+    modalBackdrop.innerHTML = `
+      <div class="modal-card" style="max-width: 580px; width: 92%; display: flex; flex-direction: column; gap: 1rem; background: #0A0F1D; border: 1px solid #3B82F6; box-shadow: 0 0 30px rgba(59, 130, 246, 0.25);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 700; color: #3B82F6;">🔪 Agendar Cirurgia no Bloco Operatório</h3>
+          <button class="btn-icon" id="closeHisModal" style="color: #FFF; font-weight: 700;">✕</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Nome do Paciente:</label>
+            <input type="text" id="surgPatient" class="form-select" value="ERICK LIMA">
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Procedimento Cirúrgico:</label>
+            <input type="text" id="surgProc" class="form-select" value="Colecistectomia Videolaparoscópica">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.75rem; color: var(--text-muted);">Sala Cirúrgica:</label>
+              <select id="surgRoom" class="form-select">
+                <option value="Sala Cirúrgica 01">Sala Cirúrgica 01 (Cardiovasc)</option>
+                <option value="Sala Cirúrgica 02">Sala Cirúrgica 02 (Ortopedia)</option>
+                <option value="Sala Cirúrgica 03" selected>Sala Cirúrgica 03 (Vidéolaparo)</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.75rem; color: var(--text-muted);">Cirurgião Principal:</label>
+              <input type="text" id="surgDoctor" class="form-select" value="Dra. Renata Vasconcelos">
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+          <button class="btn-secondary" id="cancelHisModal">Cancelar</button>
+          <button class="btn-primary" id="saveSurgeryBtn" style="background: #3B82F6; border-color: #3B82F6; font-weight: 700;">
+            🔪 Confirmar Agendamento Cirúrgico
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalBackdrop);
+
+    const close = () => modalBackdrop.remove();
+    modalBackdrop.querySelector('#closeHisModal').addEventListener('click', close);
+    modalBackdrop.querySelector('#cancelHisModal').addEventListener('click', close);
+
+    modalBackdrop.querySelector('#saveSurgeryBtn').addEventListener('click', () => {
+      const pName = modalBackdrop.querySelector('#surgPatient').value.trim().toUpperCase();
+      const proc = modalBackdrop.querySelector('#surgProc').value;
+      const room = modalBackdrop.querySelector('#surgRoom').value;
+      const doc = modalBackdrop.querySelector('#surgDoctor').value;
+
+      state.hisData.surgeries.unshift({
+        id: `CIR-${Math.floor(300 + Math.random() * 900)}`,
+        room: room,
+        patientName: pName,
+        procedure: proc,
+        surgeon: doc,
+        anesthetist: "Dr. Fernando Paes",
+        time: new Date().toLocaleTimeString().slice(0, 5),
+        status: "AGENDADA"
+      });
+
+      close();
+      render();
+      showToast(`🔪 Cirurgia de ${pName} agendada na ${room}!`, 'success');
+      logAuditEvent('SURGERY_SCHEDULED', `Cirurgia agendada: ${proc} em ${pName}`);
+    });
+  }
+
+  function openLabModal() {
+    const modalBackdrop = document.createElement('div');
+    modalBackdrop.className = 'modal-backdrop open';
+
+    modalBackdrop.innerHTML = `
+      <div class="modal-card" style="max-width: 550px; width: 92%; display: flex; flex-direction: column; gap: 1rem; background: #0A0F1D; border: 1px solid #F59E0B; box-shadow: 0 0 30px rgba(245, 158, 11, 0.25);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 700; color: #F59E0B;">🧪 Cadastrar Exame no Laboratório LIS</h3>
+          <button class="btn-icon" id="closeHisModal" style="color: #FFF; font-weight: 700;">✕</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Nome do Paciente:</label>
+            <input type="text" id="labPatient" class="form-select" value="ERICK LIMA">
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Exames Laboratoriais Solicitados:</label>
+            <input type="text" id="labName" class="form-select" value="Hemograma Completo + PCR + Coagulograma">
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+          <button class="btn-secondary" id="cancelHisModal">Cancelar</button>
+          <button class="btn-primary" id="saveLabBtn" style="background: #F59E0B; border-color: #F59E0B; font-weight: 700;">
+            🧪 Enviar Pedido LIS & Gerar Amostra
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalBackdrop);
+
+    const close = () => modalBackdrop.remove();
+    modalBackdrop.querySelector('#closeHisModal').addEventListener('click', close);
+    modalBackdrop.querySelector('#cancelHisModal').addEventListener('click', close);
+
+    modalBackdrop.querySelector('#saveLabBtn').addEventListener('click', () => {
+      const pName = modalBackdrop.querySelector('#labPatient').value.trim().toUpperCase();
+      const examName = modalBackdrop.querySelector('#labName').value;
+
+      state.hisData.labExams.unshift({
+        id: `LAB-${Math.floor(8800 + Math.random() * 900)}`,
+        sampleId: `AMO-${Math.floor(9000 + Math.random() * 900)}`,
+        patientName: pName,
+        examName: examName,
+        urgency: "ALTA",
+        status: "COLETADO",
+        result: "Amostra em processamento na centrífuga LIS"
+      });
+
+      close();
+      render();
+      showToast(`🧪 Amostra laboratorial gerada para ${pName}!`, 'success');
+    });
+  }
+
+  function openPepModal() {
+    const modalBackdrop = document.createElement('div');
+    modalBackdrop.className = 'modal-backdrop open';
+
+    modalBackdrop.innerHTML = `
+      <div class="modal-card" style="max-width: 600px; width: 92%; display: flex; flex-direction: column; gap: 1rem; background: #0A0F1D; border: 1px solid #EC4899; box-shadow: 0 0 30px rgba(236, 72, 153, 0.25);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 700; color: #EC4899;">📜 Nova Evolução Médica / Enfermagem no PEP</h3>
+          <button class="btn-icon" id="closeHisModal" style="color: #FFF; font-weight: 700;">✕</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Paciente Internado:</label>
+            <input type="text" id="pepPatient" class="form-select" value="ERICK LIMA">
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Texto da Evolução Clínica / Prescrição:</label>
+            <textarea id="pepText" class="form-select" style="height: 100px;">Paciente calmo, eupnéico em ar ambiente, afebril. Refere melhora da epigastralgia. Mantido em jejum relativo para exames adicionais.</textarea>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+          <button class="btn-secondary" id="cancelHisModal">Cancelar</button>
+          <button class="btn-primary" id="savePepBtn" style="background: #EC4899; border-color: #EC4899; font-weight: 700;">
+            📜 Assinar & Gravar no PEP
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalBackdrop);
+
+    const close = () => modalBackdrop.remove();
+    modalBackdrop.querySelector('#closeHisModal').addEventListener('click', close);
+    modalBackdrop.querySelector('#cancelHisModal').addEventListener('click', close);
+
+    modalBackdrop.querySelector('#savePepBtn').addEventListener('click', () => {
+      const pName = modalBackdrop.querySelector('#pepPatient').value.trim().toUpperCase();
+      const text = modalBackdrop.querySelector('#pepText').value;
+
+      state.hisData.pepEvolutions.unshift({
+        id: `EVO-${Math.floor(100 + Math.random() * 900)}`,
+        date: new Date().toLocaleString(),
+        patientName: pName,
+        author: "Dr. Carlos Mendonça (Plantão)",
+        text: text
+      });
+
+      close();
+      render();
+      showToast(`📜 Evolução médica gravada com sucesso no PEP!`, 'success');
+      logAuditEvent('PEP_EVOLUTION_SAVED', `Evolução PEP de ${pName}`);
+    });
+  }
+
   function openAdmitModal(targetBedIdx = null) {
-    const vagoBeds = state.hisData.beds.filter(b => b.status === 'vago');
     const modalBackdrop = document.createElement('div');
     modalBackdrop.className = 'modal-backdrop open';
 
