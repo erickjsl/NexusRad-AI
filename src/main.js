@@ -21,6 +21,7 @@ import { renderPatientPortalPage } from './components/PatientPortalPage.js';
 import { renderCrudManagement } from './components/CrudManagement.js';
 import { renderMedicalRecordPage } from './components/MedicalRecordPage.js';
 import { renderDashboard } from './components/Dashboard.js';
+import { renderHospitalManager } from './components/HospitalManager.js';
 import { loadPersistentState, saveStudiesToStorage, ensurePatientSaved } from './utils/storage.js';
 import { showToast } from './utils/toast.js';
 
@@ -340,6 +341,8 @@ function renderWorkspace() {
     });
   } else if (state.currentView === 'appointments') {
     renderAppointments(container, state, {});
+  } else if (state.currentView === 'his') {
+    renderHospitalManager(container, state, {});
   } else if (state.currentView === 'billing') {
     renderBilling(container, state, {});
   } else if (state.currentView === 'settings') {

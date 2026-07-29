@@ -24,6 +24,7 @@ export function renderHeader(container, state, callbacks) {
     record: "📜 Prontuário Médico Eletrônico",
     portal: "🌐 Portal de Entrega ao Paciente",
     crud: "📁 Central de Cadastros (CRUD)",
+    his: "🏥 Módulo Hospitalar HIS 360°",
     billing: "💳 Faturamento TUSS & TISS",
     settings: "⚙️ Configurações do Servidor"
   };
@@ -70,10 +71,10 @@ export function renderHeader(container, state, callbacks) {
 
       <!-- Right Action Controls -->
       <div style="display: flex; align-items: center; gap: 0.75rem;">
-        <div class="dicom-status">
-          <span class="status-dot"></span>
-          <span>DICOM Gateway: <strong>ONLINE</strong></span>
-        </div>
+        <button class="btn-primary" id="btnNavHis" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: linear-gradient(135deg, #EF4444 0%, #3B82F6 100%); border: none; font-weight: 700;">
+          <i data-lucide="activity" style="width: 16px; height: 16px;"></i>
+          <span>🏥 Módulo HIS</span>
+        </button>
 
         <button class="btn-primary" id="btnNewExamWizard" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: linear-gradient(135deg, #00E5FF 0%, #3B82F6 100%); border: none;">
           <i data-lucide="file-plus" style="width: 16px; height: 16px;"></i>
@@ -128,6 +129,10 @@ export function renderHeader(container, state, callbacks) {
     btn.addEventListener('click', () => {
       callbacks.onSelectModality(btn.dataset.modality);
     });
+  });
+
+  container.querySelector('#btnNavHis')?.addEventListener('click', () => {
+    if (callbacks.onToggleViewMode) callbacks.onToggleViewMode('his');
   });
 
   const wizardBtn = container.querySelector('#btnNewExamWizard');
